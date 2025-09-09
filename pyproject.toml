@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools >= 77.0.3"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cohere_beamlines"
+version = "4.2.1"
+authors = [
+  { name="Barbara Frosik", email="bfrosik@anl.gov" },
+  { name="Ross Harder", email="rharder@anl.gov" }
+]
+description = "cohere beamline support"
+readme = "README.md"
+requires-python = ">=3.11"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+license = { file = "LICENSE" }
+
+dependencies = [
+                'pyqt5',
+                'scikit-image',
+                'xrayutilities',
+                ]
+
+
+[project.urls]
+Homepage = "https://github.com/AdvancedPhotonSource/cohere_beamlines"
