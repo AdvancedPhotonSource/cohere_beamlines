@@ -24,6 +24,5 @@ dependencies = [
                 'xrayutilities',
                 ]
 
-
 [project.urls]
 Homepage = "https://github.com/AdvancedPhotonSource/cohere_beamlines"

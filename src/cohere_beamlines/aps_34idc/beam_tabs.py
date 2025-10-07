@@ -259,7 +259,7 @@ class SubInstrTab():
             msg_window ('cannot parse spec, specfile not defined')
             return
 
-        import cohere_ui.beamlines.aps_34idc.diffractometers as diff
+        import cohere_beamlines.aps_34idc.diffractometers as diff
 
         try:
             diff_obj = diff.create_diffractometer(diffractometer, {'specfile' : specfile})
