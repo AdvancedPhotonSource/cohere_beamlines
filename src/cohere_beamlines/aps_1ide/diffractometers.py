@@ -181,7 +181,6 @@ class Diffractometer_1ide(Diffractometer):
         pixelorientation = det.get_pixel_orientation(params['detector'])
         qc.init_area(pixelorientation[0], pixelorientation[1], shape[0], shape[1], 2, 2,
                      distance=detdist, pwidth1=px, pwidth2=py)
-        print('scan, scanmot', scan, scanmot)
         if scanmot in self.sampleaxes_mne:  # based on scanmot args are made for qc.area
             args = []
             for sampleax in self.sampleaxes_mne:
