@@ -9,6 +9,7 @@ import cohere_core.utilities as ut
 import numpy as np
 import math as m
 import xrayutilities.experiment as xuexp
+import xrayutilities.utilities_noconf as xutilnoconf
 import cohere_beamlines.Petra3_P10.detectors as det
 import cohere_beamlines.Petra3_P10.p10_scan_reader as p10sr
 
@@ -218,7 +219,20 @@ class Diffractometer_P10sixc(Diffractometer):
         Tdir.shape = (3, 3)
         Tdir = np.array((A, B, C)).transpose()
 
-        return (Trecip, Tdir)
+        wl = xutilnoconf.en2lam(energy)
+        args = []
+        for axis in self.detectoraxes_mne:
+            args.append(params[axis])
+
+        kf = qc.getDetectorPos(*args, deg=True) #return in meters.  Not K as docs say.
+        kf_hat = kf / np.linalg.norm(kf)
+        ki = self.incidentaxis
+        ki_hat = ki / np.linalg.norm(ki)
+        ki = 2 * np.pi / wl * ki_hat
+        kf = 2 * np.pi / wl * kf_hat
+        myq = kf - ki
+
+        return (Trecip, Tdir, myq, ki, kf)
 
 
     @staticmethod

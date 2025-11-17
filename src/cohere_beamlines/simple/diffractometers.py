@@ -1,6 +1,7 @@
 import numpy as np
 import math as m
 import xrayutilities.experiment as xuexp
+import xrayutilities.utilities_noconf as xutilnoconf
 import cohere_beamlines.simple.detectors as det
 from abc import ABC
 
@@ -167,7 +168,20 @@ class Diffractometer_34idc(Diffractometer):
         Tdir.shape = (3, 3)
         Tdir = np.array((A, B, C)).transpose()
 
-        return (Trecip, Tdir)
+        wl = xutilnoconf.en2lam(energy)
+        args = []
+        for axis in self.detectoraxes_mne:
+            args.append(params[axis])
+
+        kf = qc.getDetectorPos(*args, deg=True) #return in meters.  Not K as docs say.
+        kf_hat = kf / np.linalg.norm(kf)
+        ki = self.incidentaxis
+        ki_hat = ki / np.linalg.norm(ki)
+        ki = 2 * np.pi / wl * ki_hat
+        kf = 2 * np.pi / wl * kf_hat
+        myq = kf - ki
+
+        return (Trecip, Tdir, myq, ki, kf)
 
 
 def create_diffractometer(diff_name):
