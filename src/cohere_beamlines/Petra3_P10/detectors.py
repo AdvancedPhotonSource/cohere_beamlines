@@ -114,11 +114,6 @@ class Detector_e4m(Detector):
       7:(1040,1100,2070,1616), 8:(1040,1650,2070,2160)}
 
     module_corners= ( (0,0), (0,554), (0,1105), (0,1656), (1043,0), (1043,554), (1043,1105), (1043,1656) )
-    #corner + 254,255,256,257 in X dir need to be blocked.  Only one step in Y
-    #corner + 511,512,513,514
-    #corner + 767,768,769,770
-    #corner + 1024,1025,1026,1027
-    module_corners= ( (0,0), (0,554), (0,1105), (0,1656), (1043,0), (1043,554), (1043,1105), (1043,1656) )
     module_x = (0,1043)
     module_y = (0,554,1105,1656)
     asic_x = (256, 515, 773)
@@ -142,7 +137,7 @@ class Detector_e4m(Detector):
                 self.darkfield[np.s_[c + 256 - 2:c + 256 + 2], :] = np.nan
 
         self.min_frames = params.get('min_frames', None)
-        r=self.ROIS[params.get('detector_module')]
+        r=self.ROIS[params.get('detector_module', 0)]
         self.slice=np.s_[:,r[1]:r[3],r[0]:r[2]]
         self.max_crop = params.get('max_crop', None)
 
@@ -203,6 +198,99 @@ class Detector_e4m(Detector):
             raise ValueError(msg)
 
 
+class Detector_e2500(Detector):
+    name = "e2500"
+    dims = (1028, 512)
+    pixel = (75.0e-6, 75e-6)
+    pixelorientation = ('x+', 'y-')  # in xrayutilities notation
+    darkfield_filename = None
+    darkfield = None
+    data_dir = None
+    min_frames = None  # defines minimum frame scans in scan directory
+    Imult = 1.0
+    max_crop = None
+
+    asic_x = (256, 515, 773)
+    module_x = [0]
+    module_y = [0]
+    ROIS = {0: (0, 0, 1028, 512)}
+
+    bad_pix = np.array([[67, 512],
+             [67, 513],
+             [96, 174],
+             [139, 33],
+             [181, 881],
+             [191, 695],
+             [191, 696],
+             [191, 697],
+             [192, 696],
+             [192, 697],
+             [192, 698],
+             [193, 698],
+             [319, 612],
+             [338, 216],
+             [343, 560]])
+
+    def __init__(self, params):
+        super(Detector_e2500, self).__init__(self.name)
+        # The detector attributes for background/whitefield/etc need to be set to read frames
+        # this will capture things like data directory, whitefield_filename, etc.
+        # keep parameters that are relevant to the detector
+        self.data_dir = params.get('data_dir')
+        self.sample = params.get('sample')
+        mask = np.ones(self.dims).transpose()
+        mask[self.bad_pix[:, 0], self.bad_pix[:, 1]] = 0
+        self.darkfield = mask
+
+        if params.get('clear_asicbounds', True):
+            for c in self.module_x:
+                for x in self.asic_x:
+                    self.darkfield[:, np.s_[c + x - 2:c + x + 2]] = 0
+            for c in self.module_y:
+                self.darkfield[np.s_[c + 256 - 2:c + 256 + 2], :] = 0
+
+        self.min_frames = params.get('min_frames', None)
+        r = self.ROIS[params.get('detector_module')]
+        self.slice = np.s_[:, r[1]:r[3], r[0]:r[2]]
+        self.max_crop = params.get('max_crop', None)
+
+    def correct(self, data):
+        cor = self.darkfield.copy()
+        cor.shape = (1,) + cor.shape
+        print("cor shape", cor.shape, "dark shape", self.darkfield.shape)
+        data = data * cor
+        if self.max_crop is not None:
+            maxpos = np.unravel_index(data.argmax(), data.shape)
+            maxslice = np.s_[::,
+                       maxpos[1] - int(self.max_crop[0] / 2):maxpos[1] + int(self.max_crop[0] / 2),
+                       maxpos[2] - int(self.max_crop[1] / 2):maxpos[2] + int(self.max_crop[1] / 2)]
+            data = data[maxslice]
+            # print(data.shape, "shape", maxpos, "maxpos")
+        return data
+
+
+    @staticmethod
+    def check_mandatory_params(params):
+        """
+        For the e4m detector the data_dir, sample, darkfield_ilename, detector_module
+        are mandatory parameters.
+
+        :params: parameters needed to create detector
+        :return: message indicating problem or empty message if all is ok
+        """
+        if  'data_dir' not in params:
+            msg = 'data_dir parameter not configured, mandatory for e4m detector.'
+            raise ValueError(msg)
+        data_dir = params['data_dir']
+        if not os.path.isdir(data_dir):
+            msg = f'data_dir directory {data_dir} does not exist.'
+            raise ValueError(msg)
+
+        if 'sample' not in params:
+            msg = 'sample parameter not configured, mandatory for e4m detector.'
+            raise ValueError(msg)
+
+
 def create_detector(det_name, params):
     for detector in Detector.__subclasses__():
         if detector.name == det_name:
@@ -211,7 +299,7 @@ def create_detector(det_name, params):
     raise ValueError(msg)
 
 
-dets = {'e4m' : Detector_e4m}
+dets = {'e4m' : Detector_e4m, 'e2500': Detector_e2500}
 
 def get_pixel(det_name):
     return dets[det_name].pixel
