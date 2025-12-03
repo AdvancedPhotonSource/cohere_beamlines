@@ -238,8 +238,14 @@ class Detector_e2500(Detector):
         # keep parameters that are relevant to the detector
         self.data_dir = params.get('data_dir')
         self.sample = params.get('sample')
-        mask = np.ones(self.dims).transpose()
-        mask[self.bad_pix[:, 0], self.bad_pix[:, 1]] = 0
+        if 'darkfield_filename' in params:
+            mask = np.load(params['darkfield_filename'])
+            mask[mask > 0] = np.nan
+            mask[~np.isnan(mask)] = 1
+            mask = np.nan_to_num(mask)
+        else:
+            mask = np.ones(self.dims).transpose()
+            mask[self.bad_pix[:, 0], self.bad_pix[:, 1]] = 0
         self.darkfield = mask
 
         if params.get('clear_asicbounds', True):
@@ -252,6 +258,7 @@ class Detector_e2500(Detector):
         self.min_frames = params.get('min_frames', None)
         r = self.ROIS[params.get('detector_module')]
         self.slice = np.s_[:, r[1]:r[3], r[0]:r[2]]
+        self.darkfield = self.darkfield[r[1]:r[3], r[0]:r[2]]
         self.max_crop = params.get('max_crop', None)
 
     def correct(self, data):
