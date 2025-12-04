@@ -44,30 +44,31 @@ class Detector(ABC):
         # create empty results list that allocates a sub-list for each scan range
         first_scan = scans[0][0]
         last_scan = scans[-1][-1]
-        print('scans:', scans)
         scans_files = {}
-        scans_dirs_ranges = [[] for _ in range(len(scans))]
 
         for scanfile in os.listdir(self.data_dir):
-            print('scanfile:', scanfile)
             scanfile_full = ut.join(self.data_dir, scanfile)
             if not os.path.isfile(scanfile_full) or not scanfile_full.endswith('.h5'):
                 continue
             # chop off the ".h5" and get the scan number
-            print('scanfile is file:', scanfile_full)
-            scan = int(scanfile[:-3].split('_')[-1])
-            print('scan:', scan)
+            try:
+                scan = int(scanfile[:-3].split('_')[-1])
+            except:
+                continue
             if scan < first_scan:
                 continue
             elif scan > last_scan:
                 break
             scans_files[scan] = scanfile_full
+            if scan == last_scan:
+                break
 
         # remove excluded scans
         scans_files = {key: value for key, value in scans_files.items() if key not in self.exclude_scans}
 
         # distribute by ranges
-        scans_dirs_ranges = [[(k, v) for k, v in scans_files.items() if k >= scans[i][0] and k <= scans[i][-1]] for i in range(len(scans))]
+        scans_dirs_ranges = [[(k, v) for k, v in scans_files.items() if k >= scans[i][0] and k <= scans[i][-1]] for i in
+                             range(len(scans))]
 
         # todo when time allows
         # # remove scans that have less frames than configured. Requires to open the files.
@@ -78,9 +79,7 @@ class Detector(ABC):
 
         # remove empty sub-lists
         scans_dirs_ranges = [e for e in scans_dirs_ranges if len(e) > 0]
-        print('scans_dirs_ranges', scans_dirs_ranges)
         return scans_dirs_ranges
-
 
     def get_scan_array(self, scan_info):
         """
@@ -95,36 +94,61 @@ class Detector(ABC):
         """
         h5file = scan_info
         with h5py.File(h5file, "r") as h5f:
-            dataset = h5f['exchange/data']
-            arr = dataset[:]  # or h5py_dataset[:]
+            arr = h5f['exchange/data'][:].T
+            if self.whitefield is None:
+                # the whitefield was not configured, try to read it from h5 file
+                try:
+                    whitefield = h5f['exchange/data_white'][:].T
+                    self.whitefield = whitefield[self.roi[0]:self.roi[1], self.roi[2]:self.roi[3]]
+                    # the code below is specific to ASI detector
+                    self.wfavg = np.average(self.whitefield)
+                    self.wfstd = np.std(self.whitefield)
+                    self.whitefield = np.where(self.whitefield < self.wfavg - 3 * self.wfstd, 0, self.whitefield)
+                    if self.Imult is None:
+                        self.Imult = self.wfavg
+                except:
+                    pass
+            if self.darkfield is None:
+                # the darkfield was not configured, try to read it from h5 file
+                try:
+                    darkfield = h5f['exchange/data_dark'][:].T
+                    self.darkfield = darkfield[self.roi[0]:self.roi[1], self.roi[2]:self.roi[3]]
+                    self.darkfield = np.where(self.darkfield > 0, 0.0, 1.0)
+                    if self.whitefield is not None:
+                            self.whitefield = self.darkfield * self.whitefield  # kill known bad pixel
+                except:
+                    pass
+
+        # apply roi
+        arr = arr[self.roi[0]:self.roi[1], self.roi[2]:self.roi[3], :]
+        arr = self.correct(arr)
 
         if self.max_crop is not None:
             # check if the max value is bad pixel. If so zero it and get the next max value.
             maxindx = np.unravel_index(arr.argmax(), arr.shape)
-            while (arr[maxindx[0] + 1, maxindx[1], maxindx[2]] == 0
+            while ( #any(num < 2 for num in margin) or
+                    arr[maxindx[0] + 1, maxindx[1], maxindx[2]] == 0
                    and arr[maxindx[0] - 1, maxindx[1], maxindx[2]] == 0
                    or arr[maxindx[0], maxindx[1] + 1, maxindx[2]] == 0
                    and arr[maxindx[0], maxindx[1] - 1, maxindx[2]] == 0):
                 arr[maxindx] = 0.0
                 maxindx = np.unravel_index(arr.argmax(), arr.shape)
 
-            mc0 = int(self.max_crop[0] / 2)
-            mc1 = int(self.max_crop[1] / 2)
-            roislice1 = slice(maxindx[0] - mc0, maxindx[0] + mc0)
-            roislice2 = slice(maxindx[1] - mc1, maxindx[1] + mc1)
-            arr = arr[roislice1, roislice2, :]
+            mc0 = self.max_crop[0] // 2
+            mc1 = self.max_crop[1] // 2
+            cropslice0 = slice(max(0, maxindx[0] - mc0), min(maxindx[0] + mc0, arr.shape[0]))
+            cropslice1 = slice(max(0, maxindx[1] - mc1), min(maxindx[1] + mc1, arr.shape[1]))
+            arr = arr[cropslice0, cropslice1, :]
         return arr
 
-
     @abstractmethod
-    def correct_frame(self, frame):
+    def correct(self, frame):
         """
         Applies the correction for detector.
 
         :param frame: 2D raw data file representing a frame
         :return: corrected frame
         """
-
 
 class ASI(Detector):
     """
@@ -136,39 +160,39 @@ class ASI(Detector):
     pixel = (55.0e-6, 55e-6)
     pixelorientation = ('x+', 'y-')  # in xrayutilities notation
     whitefield = None
+    darkfield = None
     max_crop = None
     min_frames = None  # defines minimum frame scans in scan directory
+    Imult = None
 
     def __init__(self, params):
         super(ASI, self).__init__(self.name)
         # The detector attributes specific for the detector.
         # Can include data directory, whitefield_filename, roi, etc.
-
-        if 'max_crop' in params:
-            self.max_crop=params['max_crop']
         # keep parameters that are relevant to the detector
-        if 'roi' in params:
-            self.roi = params.get('roi')
-        if 'data_dir' in params:
-            self.data_dir = params.get('data_dir')
+        self.data_dir = params.get('data_dir')
+        self.roi = params.get('roi', ASI.roi)
+        self.Imult = params.get('Imult', ASI.Imult)
+        # init darkfield and whitefield if given
         if 'whitefield_filename' in params:
-            self.whitefield = ut.read_tif(params.get('whitefield_filename'))
+            self.whitefield = ut.read_tif(params.get('whitefield_filename'))[self.roi[0]:self.roi[1], self.roi[2]:self.roi[3]]
             # the code below is specific to ASI detector
             self.wfavg = np.average(self.whitefield)
             self.wfstd = np.std(self.whitefield)
             self.whitefield = np.where(self.whitefield < self.wfavg - 3 * self.wfstd, 0, self.whitefield)
             self.Imult = params.get('Imult', self.wfavg)
-        if 'darkfield_filename' in params:
-            self.darkfield = ut.read_tif(params.get('darkfield_filename'))
-            if self.whitefield is not None:
-                self.whitefield = np.where(self.darkfield > 1, 0, self.whitefield)  # kill known bad pixel
-        self.min_frames = params.get('min_frames', 0)
-        if 'exclude_scans' in params:
-            self.exclude_scans = params['exclude_scans']
-        else:
-            self.exclude_scans = []
 
-    def correct_frame(self, frame_filename):
+        if 'darkfield_filename' in params:
+            self.darkfield = ut.read_tif(params.get('darkfield_filename'))[self.roi[0]:self.roi[1], self.roi[2]:self.roi[3]]
+            self.darkfield = np.where(self.darkfield > 0, 0.0, 1.0)
+            if self.whitefield is not None:
+                    self.whitefield = self.darkfield * self.whitefield  # kill known bad pixel
+        self.min_frames = params.get('min_frames', None)
+        self.exclude_scans = params.get('exclude_scans', [])
+        self.max_crop = params.get('max_crop', None)
+
+
+    def correct(self, data):
         """
         Applies correction for the detector.
 
@@ -177,19 +201,19 @@ class ASI(Detector):
         :param frame: 2D raw data file representing a frame
         :return: corrected frame
         """
-        roislice1 = slice(self.roi[0], self.roi[0] + self.roi[1])
-        roislice2 = slice(self.roi[2], self.roi[2] + self.roi[3])
-        frame = ut.read_tif(frame_filename)[roislice1, roislice2]
+        if self.darkfield is not None:
+            cor = self.darkfield[:,:,np.newaxis]
+            data = data * cor
 
         if self.whitefield is not None:
-            frame = frame / self.whitefield[roislice1, roislice2] * self.Imult
+            cor = self.whitefield[:,:,np.newaxis]
+            data = data / cor * self.Imult
         else:
-            # print('whitefield_filename not given, not correcting')
             pass
 
-        frame = np.where(np.isfinite(frame), frame, 0)
+        data = np.nan_to_num(data)
 
-        return frame
+        return data
 
     @staticmethod
     def check_mandatory_params(params):
@@ -199,7 +223,7 @@ class ASI(Detector):
         :params: parameters needed to create detector
         :return: message indicating problem or empty message if all is ok
         """
-        if  'data_dir' not in params:
+        if 'data_dir' not in params:
             msg = 'data_dir parameter not configured, mandatory for 34idcTIM2 detector.'
             raise ValueError(msg)
         data_dir = params['data_dir']
@@ -218,7 +242,7 @@ class BSE(Detector):
     pixel = (7.8e-6, 7.8e-6)
     pixelorientation = ('x-', 'y-')  # in xrayutilities notation
     whitefield = None
-    darkfield=None
+    darkfield = None
     max_crop = None
     min_frames = None  # defines minimum frame scans in scan directory
 
@@ -227,18 +251,17 @@ class BSE(Detector):
         # The detector attributes specific for the detector.
         # Can include data directory, whitefield_filename, roi, etc.
         if 'max_crop' in params:
-            self.max_crop=params['max_crop']
+            self.max_crop = params['max_crop']
         # keep parameters that are relevant to the detector
         if 'roi' in params:
             self.roi = params.get('roi')
         if 'data_dir' in params:
             self.data_dir = params.get('data_dir')
         if 'darkfield_filename' in params:
-           self.darkfield = ut.read_tif(params.get('darkfield_filename')).astype(np.int32)
+            self.darkfield = ut.read_tif(params.get('darkfield_filename')).astype(np.int32)
         self.min_frames = params.get('min_frames', 0)
 
-
-    def correct_frame(self, frame_filename):
+    def correct(self, frame_filename):
         """
         Applies correction for the detector.
 
@@ -265,7 +288,7 @@ class BSE(Detector):
         :params: parameters needed to create detector
         :return: message indicating problem or empty message if all is ok
         """
-        if  'data_dir' not in params:
+        if 'data_dir' not in params:
             msg = 'data_dir parameter not configured, mandatory for 34idcTIM2 detector.'
             raise ValueError(msg)
         data_dir = params['data_dir']
@@ -277,12 +300,13 @@ class BSE(Detector):
 def create_detector(det_name, params):
     for detector in Detector.__subclasses__():
         if detector.name == det_name:
-            return  detector(params)
+            return detector(params)
     msg = f'detector {det_name} not defined'
     raise ValueError(msg)
 
 
-dets = {'ASI' : ASI, 'BSE' : BSE}
+dets = {'ASI': ASI, 'BSE': BSE}
+
 
 def get_pixel(det_name):
     return dets[det_name].pixel

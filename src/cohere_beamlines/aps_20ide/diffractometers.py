@@ -86,24 +86,36 @@ class Diffractometer_20ide(Diffractometer):
             if not os.path.isfile(scanfile_full) or not scanfile_full.endswith('.h5'):
                 continue
             # chop off the ".h5" and get the scan number
-            read_scan = int(scanfile[:-3].split('_')[-1])
+            try:
+                read_scan = int(scanfile[:-3].split('_')[-1])
+            except:
+                continue
             if read_scan == scan:
                 h5file = scanfile_full
                 break
-        # print('datafile is file:', h5file)
 
         h5f = h5py.File(h5file)
-        h5_dict[self.sampleaxes_mne[0]] = h5f[f'SMS/D/HR/{self.sampleaxes_mne[0]}'][:]
+        scanmot = self.sampleaxes_mne[0]
+        h5_dict['scanmot'] = scanmot
         try:
-            for mot_mne in self.detectoraxes_mne:
+            h5_dict[scanmot] = h5f[f'SMS/D/HR/{scanmot}'][:]
+        except:
+            pass
+        for mot_mne in self.detectoraxes_mne:
+            try:
                 h5_dict[mot_mne] = h5f[f'instrument/DMS/{mot_mne}'][0]
-
+            except:
+                pass
+        try:
             h5_dict[self.detectordist_mne] = h5f[f'instrument/DMS/{self.detectordist_mne}'][0]
-
+        except:
+            pass
+        try:
             h5_dict['energy'] = h5f['HEM/Energy'][0]
         except Exception as ex:
-            print(f"{__name__}: {ex}")
-            raise ex
+            # print(f"{__name__}: {ex}")
+            pass
+
         h5f.close()
         return h5_dict
 
@@ -113,10 +125,10 @@ class Diffractometer_20ide(Diffractometer):
             raise KeyError('detector name not parsed from h5 file and not configured')
         if 'DetZ' not in params:
             print('DetZ not parsed from h5 file and not configured')
-            raise KeyError('detdist not parsed from sh5 file and not configured')
-        # if 'scanmot' not in params:
-        #     print('scanmot not parsed from spec file and not configured')
-        #     raise KeyError('scanmot not parsed from spec file and not configured')
+            raise KeyError('DetZ not parsed from sh5 file and not configured')
+        if 'scanmot' not in params:
+            print('scanmot not parsed from spec file and not configured')
+            raise KeyError('scanmot not parsed from spec file and not configured')
         if 'energy' not in params:
             print('energy not parsed from h5 file and not configured')
             raise KeyError('energy not parsed from h5 file and not configured')
@@ -153,7 +165,7 @@ class Diffractometer_20ide(Diffractometer):
         py = pixel[1] * binning[1]
 
         DetZ = params['DetZ'] #/ 1000.0  # convert to meters
-        scanmot = self.sampleaxes_mne[0]
+        scanmot = params['scanmot']
         enfix = 1
         # if energy is given in kev convert to ev for xrayutilities
         energy = params['energy']
@@ -177,6 +189,7 @@ class Diffractometer_20ide(Diffractometer):
                     args.append(params[sampleax])
             args.append(params['VFF_ETA'])
             args.append(params['VFF_R'] / 1000) # + params['vff_r_offset'])
+            # append 0 for vff_eta_offset
             args.append(0)
             q2 = np.array(qc.area(*args, deg=True))
 
@@ -186,7 +199,7 @@ class Diffractometer_20ide(Diffractometer):
         Cstar = q2[:, 1, 0, 0] - q2[:, 0, 0, 0]
 
         # transform to lab coords from sample reference frame
-        scanmot_start = params['samRy'][0]
+        scanmot_start = params[scanmot][0]
         Astar = qc.transformSample2Lab(Astar, scanmot_start) * 10.0  # convert to inverse nm.
         Bstar = qc.transformSample2Lab(Bstar, scanmot_start) * 10.0
         Cstar = qc.transformSample2Lab(Cstar, scanmot_start) * 10.0
