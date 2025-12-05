@@ -110,7 +110,7 @@ class Diffractometer_20ide(Diffractometer):
             h5_dict[self.detectordist_mne] = h5f[f'instrument/DMS/{self.detectordist_mne}'][0]
         except:
             pass
-        try:F
+        try:
             h5_dict['energy'] = h5f['HEM/Energy'][0]
         except Exception as ex:
             # print(f"{__name__}: {ex}")
