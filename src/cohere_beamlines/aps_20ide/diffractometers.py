@@ -98,7 +98,7 @@ class Diffractometer_20ide(Diffractometer):
         scanmot = self.sampleaxes_mne[0]
         h5_dict['scanmot'] = scanmot
         try:
-            h5_dict[scanmot] = h5f[f'SMS/D/HR/{scanmot}'][:]
+            h5_dict[scanmot] = h5f[f'SMS/E/HR/{scanmot}'][:]
         except:
             pass
         for mot_mne in self.detectoraxes_mne:
@@ -110,7 +110,7 @@ class Diffractometer_20ide(Diffractometer):
             h5_dict[self.detectordist_mne] = h5f[f'instrument/DMS/{self.detectordist_mne}'][0]
         except:
             pass
-        try:
+        try:F
             h5_dict['energy'] = h5f['HEM/Energy'][0]
         except Exception as ex:
             # print(f"{__name__}: {ex}")

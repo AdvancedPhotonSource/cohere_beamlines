@@ -1,19 +1,11 @@
 diffractometer = "20ide"
-                           // it typically will be set to a defined class, but in case of new diffractometer
-                           // one can enter the parameters below instead
-
-// scanmot = "aero"
 detector = "ASI"
 data_dir = "data_dir"
 whitefield_filename = "cohere_ui/beamlines/aps_20ide/detector_corrections/ASI/oldwf.tif"
-dark
+darkfield_filename = "dark/file"
 //Imult = 10000
-                            // Optional, defaults to the average of the whitefield.
-                            // A multiplication factor used to renormalize the whitefield correction.
 roi = [0, 256, 256, 256]
-//vff_r_offset = 0.0
-//vff_eta_offset = 0.0
 energy = 52.0
 VTF_ETA = -24.8
 VTF_R = 692.50052
-detdist = 6.22
+detZ = 6.22
