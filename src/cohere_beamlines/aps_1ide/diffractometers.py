@@ -228,6 +228,7 @@ class Diffractometer_1ide(Diffractometer):
         args = []
         for axis in self.detectoraxes_mne:
             args.append(params[axis])
+        args.append(params['vff_eta'])
 
         kf = qc.getDetectorPos(*args, deg=True) #return in meters.  Not K as docs say.
         kf_hat = kf / np.linalg.norm(kf)
