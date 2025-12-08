@@ -124,9 +124,17 @@ class Detector(ABC):
         arr = self.correct(arr)
 
         if self.max_crop is not None:
+            def isOnedge(maxindx):
+                onedge = False
+                for i in range(len(maxindx)):
+                    if maxindx[i] == 0 or maxindx[i] > arr.shape[i] - 1:
+                        onedge = True
+                        break
+                return onedge
+
             # check if the max value is bad pixel. If so zero it and get the next max value.
             maxindx = np.unravel_index(arr.argmax(), arr.shape)
-            while ( #any(num < 2 for num in margin) or
+            while ( isOnedge(maxindx) or
                     arr[maxindx[0] + 1, maxindx[1], maxindx[2]] == 0
                    and arr[maxindx[0] - 1, maxindx[1], maxindx[2]] == 0
                    or arr[maxindx[0], maxindx[1] + 1, maxindx[2]] == 0
@@ -202,11 +210,17 @@ class ASI(Detector):
         :return: corrected frame
         """
         if self.darkfield is not None:
-            cor = self.darkfield[:,:,np.newaxis]
+            if len(self.darkfield.shape) == 2:
+                cor = self.darkfield[:,:,np.newaxis]
+            else:
+                cor = self.darkfield
             data = data * cor
 
         if self.whitefield is not None:
-            cor = self.whitefield[:,:,np.newaxis]
+            if len(self.whitefield.shape) == 2:
+                cor = self.whitefield[:,:,np.newaxis]
+            else:
+                cor = self.whitefield
             data = data / cor * self.Imult
         else:
             pass
@@ -214,71 +228,6 @@ class ASI(Detector):
         data = np.nan_to_num(data)
 
         return data
-
-    @staticmethod
-    def check_mandatory_params(params):
-        """
-        For the ASI detector the data directory is mandatory parameter.
-
-        :params: parameters needed to create detector
-        :return: message indicating problem or empty message if all is ok
-        """
-        if 'data_dir' not in params:
-            msg = 'data_dir parameter not configured, mandatory for 34idcTIM2 detector.'
-            raise ValueError(msg)
-        data_dir = params['data_dir']
-        if not os.path.isdir(data_dir):
-            msg = f'data_dir directory {data_dir} does not exist.'
-            raise ValueError(msg)
-
-
-class BSE(Detector):
-    """
-    Subclass of Detector. Encapsulates any detector. Values are based on "34idcTIM2" detector.
-    """
-    name = "BSE"
-    dims = (4096, 4096)
-    roi = (0, 4096, 0, 4096)
-    pixel = (7.8e-6, 7.8e-6)
-    pixelorientation = ('x-', 'y-')  # in xrayutilities notation
-    whitefield = None
-    darkfield = None
-    max_crop = None
-    min_frames = None  # defines minimum frame scans in scan directory
-
-    def __init__(self, params):
-        super(BSE, self).__init__(self.name)
-        # The detector attributes specific for the detector.
-        # Can include data directory, whitefield_filename, roi, etc.
-        if 'max_crop' in params:
-            self.max_crop = params['max_crop']
-        # keep parameters that are relevant to the detector
-        if 'roi' in params:
-            self.roi = params.get('roi')
-        if 'data_dir' in params:
-            self.data_dir = params.get('data_dir')
-        if 'darkfield_filename' in params:
-            self.darkfield = ut.read_tif(params.get('darkfield_filename')).astype(np.int32)
-        self.min_frames = params.get('min_frames', 0)
-
-    def correct(self, frame_filename):
-        """
-        Applies correction for the detector.
-
-        This example is based on aps_34idc beamline, TIM2 detector and applies darkfield, whitefield.
-
-        :param frame: 2D raw data file representing a frame
-        :return: corrected frame
-        """
-        roislice1 = slice(self.roi[0], self.roi[0] + self.roi[1])
-        roislice2 = slice(self.roi[2], self.roi[2] + self.roi[3])
-        frame = ut.read_tif(frame_filename)[roislice1, roislice2].astype(np.int32)
-        self.slices = [roislice1, roislice2]
-
-        if self.darkfield is not None:
-            frame = self.darkfield[roislice1, roislice2] - frame
-
-        return frame
 
     @staticmethod
     def check_mandatory_params(params):
@@ -305,7 +254,7 @@ def create_detector(det_name, params):
     raise ValueError(msg)
 
 
-dets = {'ASI': ASI, 'BSE': BSE}
+dets = {'ASI': ASI}
 
 
 def get_pixel(det_name):
