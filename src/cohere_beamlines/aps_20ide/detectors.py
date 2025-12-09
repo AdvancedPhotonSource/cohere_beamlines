@@ -45,8 +45,7 @@ class Detector(ABC):
         first_scan = scans[0][0]
         last_scan = scans[-1][-1]
         scans_files = {}
-
-        for scanfile in os.listdir(self.data_dir):
+        for scanfile in sorted(os.listdir(self.data_dir)):
             scanfile_full = ut.join(self.data_dir, scanfile)
             if not os.path.isfile(scanfile_full) or not scanfile_full.endswith('.h5'):
                 continue
