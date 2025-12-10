@@ -59,7 +59,7 @@ class Diffractometer(ABC):
         h5_dict = {}
 
         # find the file by scan number
-        for scanfile in os.listdir(self.data_dir):
+        for scanfile in sorted(os.listdir(self.data_dir)):
             scanfile_full = ut.join(self.data_dir, scanfile)
             if not os.path.isfile(scanfile_full) or not scanfile_full.endswith('.h5'):
                 continue
@@ -302,7 +302,7 @@ class Diffractometer_20ide(Diffractometer):
         h5_dict = {}
 
         # find the file by scan number
-        for scanfile in os.listdir(self.data_dir):
+        for scanfile in sorted(os.listdir(self.data_dir)):
             scanfile_full = ut.join(self.data_dir, scanfile)
             if not os.path.isfile(scanfile_full) or not scanfile_full.endswith('.h5'):
                 continue
