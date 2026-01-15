@@ -20,7 +20,6 @@ class Detector(ABC):
     def __init__(self, name="default"):
         self.name = name
 
-
     def dirs4scans(self, scans):
         """
         Finds directories with data that correspond to given scans or scan ranges.
@@ -47,6 +46,8 @@ class Detector(ABC):
             scan_range = scans[sr_idx]
             scans_dirs = scans_dirs_ranges[sr_idx]
             for scan in range(scan_range[0], scan_range[1] + 1):
+                if self.exclude_scans is not None and scan in self.exclude_scans:
+                    continue
                 scandir = ut.join(ut.join(self.data_dir, self.sample + '_{:05d}'.format(scan)))
                 if not os.path.isdir(scandir):
                     print(f'scan directory {scandir} does not exist.')
@@ -63,7 +64,6 @@ class Detector(ABC):
         scans_dirs_ranges = [e for e in scans_dirs_ranges if len(e) > 0]
         return scans_dirs_ranges
 
-
     def get_scan_array(self, scan_dir):
         """
         Reads/loads raw data file and applies correction.
@@ -78,11 +78,42 @@ class Detector(ABC):
         for hfile in os.listdir(data_dir):
             if '_data_' in hfile:
                 with h5py.File(ut.join(data_dir, hfile), "r") as f:
-                    data = np.array(f['entry/data/data'][self.slice], dtype=float)
+                    data = np.array(f['entry/data/data'], dtype=float)
+                    data = data[self.slice]
                 break
-        data = self.correct(data)
-        return data.transpose()
 
+        maxpos = np.unravel_index(data.argmax(), data.shape)
+
+        data = self.correct(data)
+
+        if self.max_crop is not None:
+            def is_on_edge(maxindx):
+                onedge = False
+                for i in range(len(maxindx)):
+                    if maxindx[i] == 0 or maxindx[i] > data.shape[i] - 1:
+                        onedge = True
+                        break
+                return onedge
+
+            # check if the max value is bad pixel. If so zero it and get the next max value.
+            maxpos = np.unravel_index(data.argmax(), data.shape)
+            while (is_on_edge(maxpos) or
+                   data[maxpos[0] + 1, maxpos[1], maxpos[2]] == 0
+                   and data[maxpos[0] - 1, maxpos[1], maxpos[2]] == 0
+                   or data[maxpos[0], maxpos[1] + 1, maxpos[2]] == 0
+                   and data[maxpos[0], maxpos[1] - 1, maxpos[2]] == 0):
+                data[maxpos] = 0.0
+                maxpos = np.unravel_index(data.argmax(), data.shape)
+
+            mc0 = self.max_crop[0] // 2
+            mc1 = self.max_crop[1] // 2
+            maxslice = np.s_[::,
+                       max(0, maxpos[1] - mc0): min(maxpos[1] + mc0, data.shape[1]),
+                       max(0, maxpos[2] - mc1): min(maxpos[2] + mc1, data.shape[2])]
+            data = data[maxslice]
+            # print(data.shape, "shape", maxpos, "maxpos")
+
+        return data.transpose()
 
     @abstractmethod
     def correct(self, data):
@@ -105,19 +136,17 @@ class Detector_e4m(Detector):
     darkfield_filename = None
     darkfield = None
     data_dir = None
-    min_frames= None  # defines minimum frame scans in scan directory
     Imult = 1.0
-    max_crop=None
-    
-    ROIS={ 0:(0,0,2070,2160), 1:(0,0,1030,514), 2:(0,550,1030,1065), 3:(0,1100,1030,1616), 
-      4:(0,1650,1030,2160), 5:(1040,0,2070,514), 6:(1040,550,2070,1065),
-      7:(1040,1100,2070,1616), 8:(1040,1650,2070,2160)}
 
-    module_corners= ( (0,0), (0,554), (0,1105), (0,1656), (1043,0), (1043,554), (1043,1105), (1043,1656) )
-    module_x = (0,1043)
-    module_y = (0,554,1105,1656)
+    ROIS = {0: (0, 0, 2070, 2160), 1: (0, 0, 1030, 514), 2: (0, 550, 1030, 1065), 3: (0, 1100, 1030, 1616),
+            4: (0, 1650, 1030, 2160), 5: (1040, 0, 2070, 514), 6: (1040, 550, 2070, 1065),
+            7: (1040, 1100, 2070, 1616), 8: (1040, 1650, 2070, 2160)}
+
+    module_corners = ((0, 0), (0, 554), (0, 1105), (0, 1656), (1043, 0), (1043, 554), (1043, 1105), (1043, 1656))
+    module_x = (0, 1043)
+    module_y = (0, 554, 1105, 1656)
     asic_x = (256, 515, 773)
-    
+
     def __init__(self, params):
         super(Detector_e4m, self).__init__(self.name)
         # The detector attributes for background/whitefield/etc need to be set to read frames
@@ -125,44 +154,36 @@ class Detector_e4m(Detector):
         # keep parameters that are relevant to the detector
         self.data_dir = params.get('data_dir')
         self.sample = params.get('sample')
-        mask = np.load(params['darkfield_filename'])
-        mask[mask > 0] = np.nan
-        mask[~np.isnan(mask)] = 1
-        self.darkfield = mask
+        self.darkfield = np.load(params['darkfield_filename'])
+        self.darkfield = np.where(self.darkfield > 0, 0, 1)
         if params.get('clear_asicbounds', True):
             for c in self.module_x:
                 for x in self.asic_x:
-                    self.darkfield[:, np.s_[c + x - 2:c + x + 2]] = np.nan
+                    self.darkfield[:, np.s_[c + x - 2:c + x + 2]] = 0
             for c in self.module_y:
-                self.darkfield[np.s_[c + 256 - 2:c + 256 + 2], :] = np.nan
+                self.darkfield[np.s_[c + 256 - 2:c + 256 + 2], :] = 0
 
-        self.min_frames = params.get('min_frames', None)
-        r=self.ROIS[params.get('detector_module', 0)]
-        self.slice=np.s_[:,r[1]:r[3],r[0]:r[2]]
+        r = self.ROIS[params.get('detector_module', 0)]
+        self.slice = np.s_[:, r[1]:r[3], r[0]:r[2]]
+        self.darkfield = self.darkfield[np.s_[r[1]:r[3], r[0]:r[2]]]
+
+        if 'roi' in params:
+            roi = params['roi']
+            self.slice = np.s_[:, roi[0]:roi[1], roi[2]:roi[3]]
+            self.darkfield = self.darkfield[np.s_[roi[0]:roi[1], roi[2]:roi[3]]]
+
+        self.min_frames = params.get('min_frames', 0)
+        self.exclude_scans = params.get('exclude_scans', None)
         self.max_crop = params.get('max_crop', None)
 
 
     def correct(self, data):
-        cor = self.darkfield[self.slice[1:]]
-        cor.shape = (1,) + cor.shape
+        if len(self.darkfield.shape) == 2:
+            cor = self.darkfield[np.newaxis, :, :]
+        else:
+            cor = self.darkfield
         data = data * cor
-        data = np.nan_to_num(data)
-        if self.max_crop is not None:
-            maxpos = np.unravel_index(data.argmax(), data.shape)
-            # check if the max value is bad pixel. If so zero it and get the next max value.
-            while (data[maxpos[0] + 1, maxpos[1], maxpos[2]] == 0
-                   and data[maxpos[0] - 1, maxpos[1], maxpos[2]] == 0
-                   or data[maxpos[0], maxpos[1] + 1, maxpos[2]] == 0
-                   and data[maxpos[0], maxpos[1] - 1, maxpos[2]] == 0):
-                data[maxpos] = 0.0
-                maxpos = np.unravel_index(data.argmax(), data.shape)
-
-            maxslice = np.s_[::,
-                       maxpos[1] - int(self.max_crop[0] / 2):maxpos[1] + int(self.max_crop[0] / 2),
-                       maxpos[2] - int(self.max_crop[1] / 2):maxpos[2] + int(self.max_crop[1] / 2)]
-            data = data[maxslice]
         return data
-
 
     @staticmethod
     def check_mandatory_params(params):
@@ -173,7 +194,7 @@ class Detector_e4m(Detector):
         :params: parameters needed to create detector
         :return: message indicating problem or empty message if all is ok
         """
-        if  'data_dir' not in params:
+        if 'data_dir' not in params:
             msg = 'data_dir parameter not configured, mandatory for e4m detector.'
             raise ValueError(msg)
         data_dir = params['data_dir']
@@ -206,30 +227,27 @@ class Detector_e2500(Detector):
     darkfield_filename = None
     darkfield = None
     data_dir = None
-    min_frames = None  # defines minimum frame scans in scan directory
     Imult = 1.0
-    max_crop = None
-
     asic_x = (256, 515, 773)
     module_x = [0]
     module_y = [0]
     ROIS = {0: (0, 0, 1028, 512)}
 
     bad_pix = np.array([[67, 512],
-             [67, 513],
-             [96, 174],
-             [139, 33],
-             [181, 881],
-             [191, 695],
-             [191, 696],
-             [191, 697],
-             [192, 696],
-             [192, 697],
-             [192, 698],
-             [193, 698],
-             [319, 612],
-             [338, 216],
-             [343, 560]])
+                        [67, 513],
+                        [96, 174],
+                        [139, 33],
+                        [181, 881],
+                        [191, 695],
+                        [191, 696],
+                        [191, 697],
+                        [192, 696],
+                        [192, 697],
+                        [192, 698],
+                        [193, 698],
+                        [319, 612],
+                        [338, 216],
+                        [343, 560]])
 
     def __init__(self, params):
         super(Detector_e2500, self).__init__(self.name)
@@ -240,9 +258,7 @@ class Detector_e2500(Detector):
         self.sample = params.get('sample')
         if 'darkfield_filename' in params:
             mask = np.load(params['darkfield_filename'])
-            mask[mask > 0] = np.nan
-            mask[~np.isnan(mask)] = 1
-            mask = np.nan_to_num(mask)
+            mask = np.where(mask > 0, 0, 1)
         else:
             mask = np.ones(self.dims).transpose()
             mask[self.bad_pix[:, 0], self.bad_pix[:, 1]] = 0
@@ -255,26 +271,25 @@ class Detector_e2500(Detector):
             for c in self.module_y:
                 self.darkfield[np.s_[c + 256 - 2:c + 256 + 2], :] = 0
 
-        self.min_frames = params.get('min_frames', None)
-        r = self.ROIS[params.get('detector_module')]
+        r = self.ROIS[params.get('detector_module', 0)]
         self.slice = np.s_[:, r[1]:r[3], r[0]:r[2]]
-        self.darkfield = self.darkfield[r[1]:r[3], r[0]:r[2]]
+        self.darkfield = self.darkfield[np.s_[r[1]:r[3], r[0]:r[2]]]
+        if 'roi' in params:
+            roi = params['roi']
+            self.slice = np.s_[:, roi[0]:roi[1], roi[2]:roi[3]]
+            self.darkfield = self.darkfield[np.s_[roi[0]:roi[1], roi[2]:roi[3]]]
+
+        self.min_frames = params.get('min_frames', 0)
+        self.exclude_scans = params.get('exclude_scans', None)
         self.max_crop = params.get('max_crop', None)
 
     def correct(self, data):
-        cor = self.darkfield.copy()
-        cor.shape = (1,) + cor.shape
-        print("cor shape", cor.shape, "dark shape", self.darkfield.shape)
+        if len(self.darkfield.shape) == 2:
+            cor = self.darkfield[np.newaxis, :, :]
+        else:
+            cor = self.darkfield
         data = data * cor
-        if self.max_crop is not None:
-            maxpos = np.unravel_index(data.argmax(), data.shape)
-            maxslice = np.s_[::,
-                       maxpos[1] - int(self.max_crop[0] / 2):maxpos[1] + int(self.max_crop[0] / 2),
-                       maxpos[2] - int(self.max_crop[1] / 2):maxpos[2] + int(self.max_crop[1] / 2)]
-            data = data[maxslice]
-            # print(data.shape, "shape", maxpos, "maxpos")
         return data
-
 
     @staticmethod
     def check_mandatory_params(params):
@@ -285,7 +300,7 @@ class Detector_e2500(Detector):
         :params: parameters needed to create detector
         :return: message indicating problem or empty message if all is ok
         """
-        if  'data_dir' not in params:
+        if 'data_dir' not in params:
             msg = 'data_dir parameter not configured, mandatory for e4m detector.'
             raise ValueError(msg)
         data_dir = params['data_dir']
@@ -301,12 +316,13 @@ class Detector_e2500(Detector):
 def create_detector(det_name, params):
     for detector in Detector.__subclasses__():
         if detector.name == det_name:
-            return  detector(params)
+            return detector(params)
     msg = f'detector {det_name} not defined'
     raise ValueError(msg)
 
 
-dets = {'e4m' : Detector_e4m, 'e2500': Detector_e2500}
+dets = {detector.name: detector for detector in Detector.__subclasses__()}
+
 
 def get_pixel(det_name):
     return dets[det_name].pixel
@@ -322,4 +338,3 @@ def check_mandatory_params(det_name, params):
             return dets[det_name].check_mandatory_params(params)
     msg = f'detector {det_name} not defined'
     raise ValueError(msg)
-

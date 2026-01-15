@@ -39,8 +39,8 @@ class Detector(ABC):
         scans_nodes_ranges = []
         for (start, stop) in scans:
             # todo add check
-            scans_nodes_ranges.append([(i, f"{i}.1/measurement/{self.name}") for i in range(start, stop+1)])
-
+            scans_nodes_ranges.append([(i, f"{i}.1/measurement/{self.name}") for i in range(start, stop+1)if i not in self.exclude_scans])
+        print('scans_nodes_ranges', scans_nodes_ranges)
         return scans_nodes_ranges
 
 
@@ -110,7 +110,8 @@ class Detector_mpxgaas(Detector):
     pixel = (55.0e-6, 55e-6)
     pixelorientation = ('x-', 'y-')  # in xrayutilities notation
     max_crop = None
-    min_frames = None  # defines minimum frame scans in scan directory
+    min_frames = 0  # defines minimum frame scans in scan directory
+    exclude_scans = []
 
 
     def __init__(self, conf_params):
@@ -129,7 +130,7 @@ def create_detector(det_name, params):
     raise ValueError(msg)
 
 
-dets = {'mpxgaas' : Detector_mpxgaas}
+dets = {detector.name: detector for detector in Detector.__subclasses__()}
 
 def get_pixel(det_name):
     return dets[det_name].pixel

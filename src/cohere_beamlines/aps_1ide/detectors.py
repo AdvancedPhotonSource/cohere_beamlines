@@ -67,7 +67,7 @@ class Detector(ABC):
                 elif scan <= scan_range[-1]:
                     # scan within range
                     # before adding scan check if there is enough data files
-                    if len(os.listdir(scandir_full)) >= self.min_frames:
+                    if len(os.listdir(scandir_full)) >= self.min_frames and scan not in self.exclude_scans:
                         scans_dirs.append((scan, scandir_full))
                     if scan == scan_range[-1]:
                         sr_idx += 1
@@ -82,7 +82,7 @@ class Detector(ABC):
                     scan_range = scans[sr_idx]
                     scans_dirs = scans_dirs_ranges[sr_idx]
                     if (scan >= scan_range[0] and scan <= scan_range[-1]
-                            and len(os.listdir(scandir_full)) >= self.min_frames):
+                            and len(os.listdir(scandir_full)) >= self.min_frames) and scan not in self.exclude_scans:
                             scans_dirs.append((scan, scandir_full))
 
         # remove empty sub-lists
@@ -156,21 +156,16 @@ class ASI(Detector):
     pixel = (55.0e-6, 55e-6)
     pixelorientation = ('x+', 'y-')  # in xrayutilities notation
     whitefield = None
-    max_crop = None
-    min_frames = None  # defines minimum frame scans in scan directory
 
     def __init__(self, params):
         super(ASI, self).__init__(self.name)
         # The detector attributes specific for the detector.
         # Can include data directory, whitefield_filename, roi, etc.
 
-        if 'max_crop' in params:
-            self.max_crop=params['max_crop']
         # keep parameters that are relevant to the detector
+        self.data_dir = params.get('data_dir')
         if 'roi' in params:
             self.roi = params.get('roi')
-        if 'data_dir' in params:
-            self.data_dir = params.get('data_dir')
         if 'whitefield_filename' in params:
             self.whitefield = ut.read_tif(params.get('whitefield_filename'))
             # the code below is specific to ASI detector
@@ -179,6 +174,9 @@ class ASI(Detector):
             self.whitefield = np.where(self.whitefield < self.wfavg - 3 * self.wfstd, 0, self.whitefield)
             self.Imult = params.get('Imult', self.wfavg)
         self.min_frames = params.get('min_frames', 0)
+        self.exclude_scans = params.get('exclude_scans', [])
+        self.max_crop = params.get('max_crop', None)
+
 
     def correct_frame(self, frame_filename):
         """
@@ -231,23 +229,20 @@ class BSE(Detector):
     pixelorientation = ('x-', 'y-')  # in xrayutilities notation
     whitefield = None
     darkfield=None
-    max_crop = None
-    min_frames = None  # defines minimum frame scans in scan directory
 
     def __init__(self, params):
         super(BSE, self).__init__(self.name)
         # The detector attributes specific for the detector.
         # Can include data directory, whitefield_filename, roi, etc.
-        if 'max_crop' in params:
-            self.max_crop=params['max_crop']
         # keep parameters that are relevant to the detector
+        self.data_dir = params.get('data_dir')
         if 'roi' in params:
             self.roi = params.get('roi')
-        if 'data_dir' in params:
-            self.data_dir = params.get('data_dir')
         if 'darkfield_filename' in params:
            self.darkfield = ut.read_tif(params.get('darkfield_filename')).astype(np.int32)
         self.min_frames = params.get('min_frames', 0)
+        self.exclude_scans = params.get('exclude_scans', None)
+        self.max_crop = params.get('max_crop', None)
 
 
     def correct_frame(self, frame_filename):
@@ -294,7 +289,7 @@ def create_detector(det_name, params):
     raise ValueError(msg)
 
 
-dets = {'ASI' : ASI, 'BSE' : BSE}
+dets = {detector.name: detector for detector in Detector.__subclasses__()}
 
 def get_pixel(det_name):
     return dets[det_name].pixel

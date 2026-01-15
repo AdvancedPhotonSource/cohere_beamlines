@@ -59,7 +59,7 @@ class Detector(ABC):
                 elif scan <= scan_range[-1]:
                     # scan within range
                     # before adding scan check if there is enough data files
-                    if len(os.listdir(scandir_full)) >= self.min_frames:
+                    if len(os.listdir(scandir_full)) >= self.min_frames and scan not in self.exclude_scans:
                         scans_dirs.append((scan, scandir_full))
                     if scan == scan_range[-1]:
                         sr_idx += 1
@@ -157,8 +157,6 @@ class Detector_34idcTIM1(Detector):
     pixelorientation = ('x+', 'y-')  # in xrayutilities notation
     darkfield = None
     data_dir = None
-    min_frames = None  # defines minimum frame scans in scan directory
-    max_crop = None
     Imult = 1.0
 
     def __init__(self, params):
@@ -171,8 +169,8 @@ class Detector_34idcTIM1(Detector):
         if 'darkfield_filename' in params:
             self.darkfield = ut.read_tif(params.get('darkfield_filename'))
         self.min_frames = params.get('min_frames', 0)
-        if 'max_crop' in params:
-            self.max_crop=params['max_crop']
+        self.exclude_scans = params.get('exclude_scans', None)
+        self.max_crop = params.get('max_crop', None)
 
 
     # TIM1 only needs bad pixels deleted.  Even that is optional.
@@ -227,8 +225,6 @@ class Detector_34idcTIM2(Detector):
     whitefield = None
     darkfield = None
     raw_frame = None
-    min_frames = None  # defines minimum frame scans in scan directory
-    max_crop = None
     Imult = None
 
     def __init__(self, params):
@@ -253,8 +249,8 @@ class Detector_34idcTIM2(Detector):
                 self.whitefield = np.where(self.darkfield > 1, 0, self.whitefield)  # kill known bad pixel
 
         self.min_frames = params.get('min_frames', 0)
-        if 'max_crop' in params:
-            self.max_crop=params['max_crop']
+        self.exclude_scans = params.get('exclude_scans', [])
+        self.max_crop = params.get('max_crop', None)
 
 
     def correct_frame(self, filename):
@@ -415,7 +411,7 @@ def create_detector(det_name, params):
     raise ValueError(msg)
 
 
-dets = {'34idcTIM1' : Detector_34idcTIM1, '34idcTIM2' : Detector_34idcTIM2}
+dets = {detector.name: detector for detector in Detector.__subclasses__()}
 
 def get_pixel(det_name):
     return dets[det_name].pixel
