@@ -125,8 +125,8 @@ class InstrTab(QWidget):
         gen_layout.addRow("detector area (roi)", self.roi)
         self.energy = QLineEdit()
         gen_layout.addRow("energy", self.energy)
-        self.detdist = QLineEdit()
-        gen_layout.addRow("detdist (mm)", self.detdist)
+        self.DetZ = QLineEdit()
+        gen_layout.addRow("DetZ (mm)", self.DetZ)
         self.VFF_ETA = QLineEdit()
         gen_layout.addRow("VFF_ETA", self.VFF_ETA)
         self.VFF_R = QLineEdit()
@@ -213,9 +213,9 @@ class InstrTab(QWidget):
         if 'energy' in conf_map:
             self.energy.setText(str(conf_map['energy']).replace(" ", ""))
             self.energy.setStyleSheet('color: black')
-        if 'detdist' in conf_map:
-            self.detdist.setText(str(conf_map['detdist']).replace(" ", ""))
-            self.detdist.setStyleSheet('color: black')
+        if 'DetZ' in conf_map:
+            self.DetZ.setText(str(conf_map['DetZ']).replace(" ", ""))
+            self.DetZ.setStyleSheet('color: black')
 
         if self.main_win.is_exp_exists():
             self.save_conf()
@@ -286,9 +286,9 @@ class InstrTab(QWidget):
         self.detector.setText('')
         self.roi.setText('')
         self.VFF_R.setText('')
-        self.VFF_ETA .setText('')
+        self.VFF_ETA.setText('')
         self.energy.setText('')
-        self.detdist.setText('')
+        self.DetZ.setText('')
 
 
     def load_instr_conf(self):
@@ -337,13 +337,13 @@ class InstrTab(QWidget):
         if len(self.roi.text()) > 0:
             conf_map['roi'] = ast.literal_eval(str(self.roi.text()).replace(os.linesep,''))
         if len(self.VFF_R.text()) > 0:
-            conf_map['vff_r_offset'] = ast.literal_eval(str(self.VFF_R.text()))
+            conf_map['VFF_R'] = ast.literal_eval(str(self.VFF_R.text()))
         if len(self.VFF_ETA.text()) > 0:
-            conf_map['vff_eta_offset'] = ast.literal_eval(str(self.VFF_ETA.text()))
+            conf_map['VFF_ETA'] = ast.literal_eval(str(self.VFF_ETA.text()))
         if len(self.energy.text()) > 0:
             conf_map['energy'] = ast.literal_eval(str(self.energy.text()))
-        if len(self.detdist.text()) > 0:
-            conf_map['detdist'] = ast.literal_eval(str(self.detdist.text()))
+        if len(self.DetZ.text()) > 0:
+            conf_map['DetZ'] = ast.literal_eval(str(self.DetZ.text()))
 
         return conf_map
 
@@ -375,4 +375,3 @@ class InstrTab(QWidget):
         #         return
 
         ut.write_config(conf_map, ut.join(self.main_win.experiment_dir, 'conf', 'config_instr'))
-
