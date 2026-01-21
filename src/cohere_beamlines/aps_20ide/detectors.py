@@ -98,23 +98,25 @@ class Detector(ABC):
                 # the whitefield was not configured, try to read it from h5 file
                 try:
                     whitefield = h5f['exchange/data_white'][:].T
-                    self.whitefield = whitefield[self.roi[0]:self.roi[1], self.roi[2]:self.roi[3]]
-                    # the code below is specific to ASI detector
-                    self.wfavg = np.average(self.whitefield)
-                    self.wfstd = np.std(self.whitefield)
-                    self.whitefield = np.where(self.whitefield < self.wfavg - 3 * self.wfstd, 0, self.whitefield)
-                    if self.Imult is None:
-                        self.Imult = self.wfavg
+                    if np.sum(whitefield) > 0:
+                        self.whitefield = whitefield[self.roi[0]:self.roi[1], self.roi[2]:self.roi[3]]
+                        # the code below is specific to ASI detector
+                        self.wfavg = np.average(self.whitefield)
+                        self.wfstd = np.std(self.whitefield)
+                        self.whitefield = np.where(self.whitefield < self.wfavg - 3 * self.wfstd, 0, self.whitefield)
+                        if self.Imult is None:
+                            self.Imult = self.wfavg
                 except:
                     pass
             if self.darkfield is None:
                 # the darkfield was not configured, try to read it from h5 file
                 try:
                     darkfield = h5f['exchange/data_dark'][:].T
-                    self.darkfield = darkfield[self.roi[0]:self.roi[1], self.roi[2]:self.roi[3]]
-                    self.darkfield = np.where(self.darkfield > 0, 0.0, 1.0)
-                    if self.whitefield is not None:
-                            self.whitefield = self.darkfield * self.whitefield  # kill known bad pixel
+                    if np.sum(whitefield) > 0:
+                        self.darkfield = darkfield[self.roi[0]:self.roi[1], self.roi[2]:self.roi[3]]
+                        self.darkfield = np.where(self.darkfield > 0, 0.0, 1.0)
+                        if self.whitefield is not None:
+                                self.whitefield = self.darkfield * self.whitefield  # kill known bad pixel
                 except:
                     pass
 
