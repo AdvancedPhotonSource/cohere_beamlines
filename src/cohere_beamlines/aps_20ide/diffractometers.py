@@ -297,7 +297,7 @@ class Diffractometer_20ide(Diffractometer):
 
         Returns
         -------
-        dict with delta, gamma, theta, phi, chi, scanmot, scanmot_del, detdist, detector_name, energy
+        dict with VFF_ETA, VFF_R, scanmot, scanmot_del, DetZ, detector_name, energy
         """
         h5_dict = {}
 
@@ -346,10 +346,10 @@ class Diffractometer_20ide(Diffractometer):
             raise KeyError('detector name not parsed from h5 file and not configured')
         if 'DetZ' not in params:
             print('DetZ not parsed from h5 file and not configured')
-            raise KeyError('DetZ not parsed from sh5 file and not configured')
+            raise KeyError('DetZ not parsed from h5 file and not configured')
         if 'scanmot' not in params:
-            print('scanmot not parsed from spec file and not configured')
-            raise KeyError('scanmot not parsed from spec file and not configured')
+            print('scanmot not parsed from h5 file and not configured')
+            raise KeyError('scanmot not parsed from h5 file and not configured')
         if 'energy' not in params:
             print('energy not parsed from h5 file and not configured')
             raise KeyError('energy not parsed from h5 file and not configured')
