@@ -1,0 +1,3 @@
+caput -S QMPX3:HDF1:XMLFileName /net/sl1data/export/slb/bluesky_dev/mpe_xml/20ide_hdf5_layout.xml
+caput -S QMPX3:cam1:NDAtttributesFile /net/s1data/export/s1b/bluesky_dev/mpe_xml/mpe_asi_attributes_cam.xml
+caput -S QMPX3:Trans1:NDAttributesFile /net/s1data/export/slb/bluesky_dev/mpe_xml/20ide_instr_attributes_trans.xml
