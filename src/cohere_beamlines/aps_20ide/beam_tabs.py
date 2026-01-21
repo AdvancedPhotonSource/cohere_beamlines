@@ -204,12 +204,12 @@ class InstrTab(QWidget):
         if 'roi' in conf_map:
             self.roi.setText(str(conf_map['roi']).replace(" ", ""))
             self.roi.setStyleSheet('color: black')
-        if 'vff_r_offset' in conf_map:
-            diff = str(conf_map['vff_r_offset']).replace(" ", "")
-            self.VFF_R.setText(diff)
-        if 'vff_eta_offset' in conf_map:
-            diff = str(conf_map['vff_eta_offset']).replace(" ", "")
-            self.VFF_ETA.setText(diff)
+        if 'VFF_R' in conf_map:
+            vff_r = str(conf_map['VFF_R']).replace(" ", "")
+            self.VFF_R.setText(vff_r)
+        if 'VFF_ETA' in conf_map:
+            vff_eta = str(conf_map['VFF_ETA']).replace(" ", "")
+            self.VFF_ETA.setText(vff_eta)
         if 'energy' in conf_map:
             self.energy.setText(str(conf_map['energy']).replace(" ", ""))
             self.energy.setStyleSheet('color: black')
