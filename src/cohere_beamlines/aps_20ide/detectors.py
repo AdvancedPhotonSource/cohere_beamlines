@@ -255,8 +255,7 @@ def create_detector(det_name, params):
     raise ValueError(msg)
 
 
-dets = {'ASI': ASI}
-
+dets = {detector.name: detector for detector in Detector.__subclasses__()}
 
 def get_pixel(det_name):
     return dets[det_name].pixel
