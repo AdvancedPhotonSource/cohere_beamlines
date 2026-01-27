@@ -94,6 +94,7 @@ class Detector(ABC):
         h5file = scan_info
         with h5py.File(h5file, "r") as h5f:
             arr = h5f['exchange/data'][:].T
+            print('data shape:', arr.shape)
             if self.whitefield is None:
                 # the whitefield was not configured, try to read it from h5 file
                 try:
@@ -190,6 +191,7 @@ class ASI(Detector):
             self.wfstd = np.std(self.whitefield)
             self.whitefield = np.where(self.whitefield < self.wfavg - 3 * self.wfstd, 0, self.whitefield)
             self.Imult = params.get('Imult', self.wfavg)
+            print('white shape', self.whitefield.shape)
 
         if 'darkfield_filename' in params:
             self.darkfield = ut.read_tif(params.get('darkfield_filename'))[self.roi[0]:self.roi[1], self.roi[2]:self.roi[3]]
