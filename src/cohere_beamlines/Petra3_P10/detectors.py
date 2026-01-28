@@ -48,6 +48,8 @@ class Detector(ABC):
             for scan in range(scan_range[0], scan_range[1] + 1):
                 if self.exclude_scans is not None and scan in self.exclude_scans:
                     continue
+                if self.exclude_scans is not None and scan in self.exclude_scans:
+                    continue
                 scandir = ut.join(ut.join(self.data_dir, self.sample + '_{:05d}'.format(scan)))
                 if not os.path.isdir(scandir):
                     print(f'scan directory {scandir} does not exist.')
@@ -124,7 +126,6 @@ class Detector(ABC):
         :return: corrected frame
         """
 
-
 class Detector_e4m(Detector):
     """
     Subclass of Detector. Encapsulates "e4m" detector.
@@ -184,6 +185,7 @@ class Detector_e4m(Detector):
             cor = self.darkfield
         data = data * cor
         return data
+    
 
     @staticmethod
     def check_mandatory_params(params):
@@ -276,12 +278,13 @@ class Detector_e2500(Detector):
         self.darkfield = self.darkfield[np.s_[r[1]:r[3], r[0]:r[2]]]
         if 'roi' in params:
             roi = params['roi']
-            self.slice = np.s_[:, roi[0]:roi[1], roi[2]:roi[3]]
-            self.darkfield = self.darkfield[np.s_[roi[0]:roi[1], roi[2]:roi[3]]]
+            self.slice = np.s_[:, roi[2]:roi[3], roi[0]:roi[1]]
+            self.darkfield = self.darkfield[np.s_[roi[2]:roi[3], roi[0]:roi[1]]]
 
         self.min_frames = params.get('min_frames', 0)
         self.exclude_scans = params.get('exclude_scans', None)
         self.max_crop = params.get('max_crop', None)
+
 
     def correct(self, data):
         if len(self.darkfield.shape) == 2:
@@ -290,6 +293,7 @@ class Detector_e2500(Detector):
             cor = self.darkfield
         data = data * cor
         return data
+    
 
     @staticmethod
     def check_mandatory_params(params):

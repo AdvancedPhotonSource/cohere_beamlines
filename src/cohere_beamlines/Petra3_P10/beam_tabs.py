@@ -382,6 +382,8 @@ class InstrTab(QWidget):
         gen_layout.addRow("darkfield file", self.dark_file_button)
         self.detector_module = QLineEdit()
         gen_layout.addRow("detector module", self.detector_module)
+        self.roi = QLineEdit()
+        gen_layout.addRow("roi", self.roi)
         tab_layout.addWidget(self.extended.fio_widget)
         if not self.add_config:
             self.extended.fio_widget.hide()
@@ -442,6 +444,8 @@ class InstrTab(QWidget):
             self.dark_file_button.setText('')
         if 'detector_module' in conf_map:
             self.detector_module.setText(str(conf_map['detector_module']).replace(" ", ""))
+        if 'roi' in conf_map:
+            self.roi.setText(str(conf_map['roi']).replace(" ", ""))
 
         if self.add_config:
             self.extended.load_tab(conf_map)
@@ -491,6 +495,7 @@ class InstrTab(QWidget):
             self.extended.clear_conf()
         self.dark_file_button.setText('')
         self.detector_module.setText('')
+        self.roi.setText('')
 
 
     def load_instr_conf(self):
@@ -534,6 +539,8 @@ class InstrTab(QWidget):
             conf_map['darkfield_filename'] = str(self.dark_file_button.text().strip())
         if len(self.detector_module.text()) > 0:
             conf_map['detector_module'] = ast.literal_eval(str(self.detector_module.text()))
+        if len(self.roi.text()) > 0:
+            conf_map['roi'] = ast.literal_eval(str(self.roi.text()).replace(os.linesep,''))
 
         if self.add_config:
             conf_map.update(self.extended.get_instr_config())
