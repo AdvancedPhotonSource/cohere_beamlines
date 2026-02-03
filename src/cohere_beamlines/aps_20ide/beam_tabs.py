@@ -127,10 +127,10 @@ class InstrTab(QWidget):
         gen_layout.addRow("energy", self.energy)
         self.DetZ = QLineEdit()
         gen_layout.addRow("DetZ (mm)", self.DetZ)
-        self.VFF_ETA = QLineEdit()
-        gen_layout.addRow("VFF_ETA", self.VFF_ETA)
-        self.VFF_R = QLineEdit()
-        gen_layout.addRow("VFF_R", self.VFF_R)
+        self.DetX = QLineEdit()
+        gen_layout.addRow("DetX", self.DetX)
+        self.DetY = QLineEdit()
+        gen_layout.addRow("DetY", self.DetY)
         # self.samRy = QLineEdit()
         # gen_layout.addRow("samRy", self.samRy)
         tab_layout.addLayout(gen_layout)
@@ -204,12 +204,12 @@ class InstrTab(QWidget):
         if 'roi' in conf_map:
             self.roi.setText(str(conf_map['roi']).replace(" ", ""))
             self.roi.setStyleSheet('color: black')
-        if 'VFF_R' in conf_map:
-            vff_r = str(conf_map['VFF_R']).replace(" ", "")
-            self.VFF_R.setText(vff_r)
-        if 'VFF_ETA' in conf_map:
-            vff_eta = str(conf_map['VFF_ETA']).replace(" ", "")
-            self.VFF_ETA.setText(vff_eta)
+        if 'DetY' in conf_map:
+            DetY = str(conf_map['DetY']).replace(" ", "")
+            self.DetY.setText(DetY)
+        if 'DetX' in conf_map:
+            DetX = str(conf_map['DetX']).replace(" ", "")
+            self.DetX.setText(DetX)
         if 'energy' in conf_map:
             self.energy.setText(str(conf_map['energy']).replace(" ", ""))
             self.energy.setStyleSheet('color: black')
@@ -285,8 +285,8 @@ class InstrTab(QWidget):
         self.Imult.setText('')
         self.detector.setText('')
         self.roi.setText('')
-        self.VFF_R.setText('')
-        self.VFF_ETA.setText('')
+        self.DetY.setText('')
+        self.DetX.setText('')
         self.energy.setText('')
         self.DetZ.setText('')
 
@@ -336,10 +336,10 @@ class InstrTab(QWidget):
             conf_map['detector'] = str(self.detector.text())
         if len(self.roi.text()) > 0:
             conf_map['roi'] = ast.literal_eval(str(self.roi.text()).replace(os.linesep,''))
-        if len(self.VFF_R.text()) > 0:
-            conf_map['VFF_R'] = ast.literal_eval(str(self.VFF_R.text()))
-        if len(self.VFF_ETA.text()) > 0:
-            conf_map['VFF_ETA'] = ast.literal_eval(str(self.VFF_ETA.text()))
+        if len(self.DetY.text()) > 0:
+            conf_map['DetY'] = ast.literal_eval(str(self.DetY.text()))
+        if len(self.DetX.text()) > 0:
+            conf_map['DetX'] = ast.literal_eval(str(self.DetX.text()))
         if len(self.energy.text()) > 0:
             conf_map['energy'] = ast.literal_eval(str(self.energy.text()))
         if len(self.DetZ.text()) > 0:

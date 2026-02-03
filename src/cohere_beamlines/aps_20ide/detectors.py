@@ -65,16 +65,20 @@ class Detector(ABC):
         # remove excluded scans
         scans_files = {key: value for key, value in scans_files.items() if key not in self.exclude_scans}
 
+        # remove scans that have less frames than configured.
+        if self.min_frames > 0:
+            short_in_frames = []
+            for (scan, fn) in scans_files.items():
+                # open file, check number of
+                with h5py.File(fn, "r") as h5f:
+                    if h5f['exchange/data'].shape[0] < self.min_frames:
+                        short_in_frames.append(scan)
+            if len(short_in_frames) > 0:
+                scans_files = {key: value for key, value in scans_files.items() if key not in short_in_frames}
+
         # distribute by ranges
         scans_dirs_ranges = [[(k, v) for k, v in scans_files.items() if k >= scans[i][0] and k <= scans[i][-1]] for i in
                              range(len(scans))]
-
-        # todo when time allows
-        # # remove scans that have less frames than configured. Requires to open the files.
-        # if self.min_frames > 0:
-        #     for r in scans_dirs_ranges:
-        #         for scan in r:
-        #             # open file, check number of frames
 
         # remove empty sub-lists
         scans_dirs_ranges = [e for e in scans_dirs_ranges if len(e) > 0]
@@ -94,7 +98,6 @@ class Detector(ABC):
         h5file = scan_info
         with h5py.File(h5file, "r") as h5f:
             arr = h5f['exchange/data'][:].T
-            print('data shape:', arr.shape)
             if self.whitefield is None:
                 # the whitefield was not configured, try to read it from h5 file
                 try:
@@ -149,6 +152,7 @@ class Detector(ABC):
             cropslice0 = slice(max(0, maxindx[0] - mc0), min(maxindx[0] + mc0, arr.shape[0]))
             cropslice1 = slice(max(0, maxindx[1] - mc1), min(maxindx[1] + mc1, arr.shape[1]))
             arr = arr[cropslice0, cropslice1, :]
+
         return arr
 
     @abstractmethod
@@ -165,7 +169,6 @@ class ASI(Detector):
     Subclass of Detector. Encapsulates any detector. Values are based on "34idcTIM2" detector.
     """
     name = "ASI"
-    dims = (518, 518)
     roi = (0, 512, 0, 512)
     pixel = (55.0e-6, 55e-6)
     pixelorientation = ('x+', 'y-')  # in xrayutilities notation
@@ -191,7 +194,6 @@ class ASI(Detector):
             self.wfstd = np.std(self.whitefield)
             self.whitefield = np.where(self.whitefield < self.wfavg - 3 * self.wfstd, 0, self.whitefield)
             self.Imult = params.get('Imult', self.wfavg)
-            print('white shape', self.whitefield.shape)
 
         if 'darkfield_filename' in params:
             self.darkfield = ut.read_tif(params.get('darkfield_filename'))[self.roi[0]:self.roi[1], self.roi[2]:self.roi[3]]
@@ -241,6 +243,79 @@ class ASI(Detector):
         :return: message indicating problem or empty message if all is ok
         """
         if 'data_dir' not in params:
+            msg = 'data_dir parameter not configured, mandatory for 34idcTIM2 detector.'
+            raise ValueError(msg)
+        data_dir = params['data_dir']
+        if not os.path.isdir(data_dir):
+            msg = f'data_dir directory {data_dir} does not exist.'
+            raise ValueError(msg)
+
+
+class BSE(Detector):
+    """
+    Subclass of Detector. Encapsulates any detector. Values are based on "34idcTIM2" detector.
+    """
+    name = "BSE"
+    roi = (0, 4096, 0, 4096)
+    pixel = (7.8e-6, 7.8e-6)
+    pixelorientation = ('x-', 'y-')  # in xrayutilities notation
+    whitefield = None
+    darkfield=None
+
+    def __init__(self, params):
+        super(BSE, self).__init__(self.name)
+        # The detector attributes specific for the detector.
+        # Can include data directory, whitefield_filename, roi, etc.
+        # keep parameters that are relevant to the detector
+        self.data_dir = params.get('data_dir')
+        self.roi = params.get('roi', BSE.roi)
+        if 'darkfield_filename' in params:
+            self.darkfield = ut.read_tif(params.get('darkfield_filename'))[self.roi[0]:self.roi[1], self.roi[2]:self.roi[3]]
+            self.darkfield = np.where(self.darkfield > 0, 0.0, 1.0)
+        self.min_frames = params.get('min_frames', None)
+        self.exclude_scans = params.get('exclude_scans', [])
+        self.max_crop = params.get('max_crop', None)
+
+
+    def correct(self, data):
+        """
+        Applies correction for the detector.
+
+        This example is based on aps_34idc beamline, TIM2 detector and applies darkfield, whitefield.
+
+        :param frame: 2D raw data file representing a frame
+        :return: corrected frame
+        """
+        if self.darkfield is not None:
+            if len(self.darkfield.shape) == 2:
+                cor = self.darkfield[:,:,np.newaxis]
+            else:
+                cor = self.darkfield
+            data = data * cor
+
+        if self.whitefield is not None:
+            if len(self.whitefield.shape) == 2:
+                cor = self.whitefield[:,:,np.newaxis]
+            else:
+                cor = self.whitefield
+            data = data / cor * self.Imult
+        else:
+            pass
+
+        data = np.nan_to_num(data)
+
+        return data
+
+
+    @staticmethod
+    def check_mandatory_params(params):
+        """
+        For the ASI detector the data directory is mandatory parameter.
+
+        :params: parameters needed to create detector
+        :return: message indicating problem or empty message if all is ok
+        """
+        if  'data_dir' not in params:
             msg = 'data_dir parameter not configured, mandatory for 34idcTIM2 detector.'
             raise ValueError(msg)
         data_dir = params['data_dir']
