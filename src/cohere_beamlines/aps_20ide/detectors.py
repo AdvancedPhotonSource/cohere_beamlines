@@ -175,7 +175,7 @@ class ASI(Detector):
     whitefield = None
     darkfield = None
     max_crop = None
-    min_frames = None  # defines minimum frame scans in scan directory
+    min_frames = 0  # defines minimum frame scans in scan directory
     Imult = None
 
     def __init__(self, params):
@@ -200,7 +200,7 @@ class ASI(Detector):
             self.darkfield = np.where(self.darkfield > 0, 0.0, 1.0)
             if self.whitefield is not None:
                     self.whitefield = self.darkfield * self.whitefield  # kill known bad pixel
-        self.min_frames = params.get('min_frames', None)
+        self.min_frames = params.get('min_frames', 0)
         self.exclude_scans = params.get('exclude_scans', [])
         self.max_crop = params.get('max_crop', None)
 
@@ -272,7 +272,7 @@ class BSE(Detector):
         if 'darkfield_filename' in params:
             self.darkfield = ut.read_tif(params.get('darkfield_filename'))[self.roi[0]:self.roi[1], self.roi[2]:self.roi[3]]
             self.darkfield = np.where(self.darkfield > 0, 0.0, 1.0)
-        self.min_frames = params.get('min_frames', None)
+        self.min_frames = params.get('min_frames', 0)
         self.exclude_scans = params.get('exclude_scans', [])
         self.max_crop = params.get('max_crop', None)
 
