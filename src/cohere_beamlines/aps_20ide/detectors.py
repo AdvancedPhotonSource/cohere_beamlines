@@ -72,6 +72,7 @@ class Detector(ABC):
                 # open file, check number of
                 with h5py.File(fn, "r") as h5f:
                     if h5f['exchange/data'].shape[0] < self.min_frames:
+                        print(f'data for scan {scan} contains fewer than {self.min_frames} frames.')
                         short_in_frames.append(scan)
             if len(short_in_frames) > 0:
                 scans_files = {key: value for key, value in scans_files.items() if key not in short_in_frames}

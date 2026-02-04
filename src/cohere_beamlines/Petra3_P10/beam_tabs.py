@@ -384,6 +384,7 @@ class InstrTab(QWidget):
         gen_layout.addRow("detector module", self.detector_module)
         self.roi = QLineEdit()
         gen_layout.addRow("roi", self.roi)
+        self.roi.setToolTip('Format: [x_start, y_start, x_end, y_end] Note: roi is ignored if detector_module > 1')
         tab_layout.addWidget(self.extended.fio_widget)
         if not self.add_config:
             self.extended.fio_widget.hide()

@@ -81,14 +81,14 @@ class Detector(ABC):
             if '_data_' in hfile:
                 with h5py.File(ut.join(data_dir, hfile), "r") as f:
                     data = np.array(f['entry/data/data'], dtype=float)
-                    data = data[self.slice]
+                    data = data[self.slice].T
+                    # data = data.T
                 break
-
-        maxpos = np.unravel_index(data.argmax(), data.shape)
-
         data = self.correct(data)
-
+        
         if self.max_crop is not None:
+            maxpos = np.unravel_index(data.argmax(), data.shape)
+
             def is_on_edge(maxindx):
                 onedge = False
                 for i in range(len(maxindx)):
@@ -109,13 +109,13 @@ class Detector(ABC):
 
             mc0 = self.max_crop[0] // 2
             mc1 = self.max_crop[1] // 2
-            maxslice = np.s_[::,
-                       max(0, maxpos[1] - mc0): min(maxpos[1] + mc0, data.shape[1]),
-                       max(0, maxpos[2] - mc1): min(maxpos[2] + mc1, data.shape[2])]
+            maxslice = np.s_[
+                       max(0, maxpos[0] - mc0): min(maxpos[0] + mc0, data.shape[0]),
+                       max(0, maxpos[1] - mc1): min(maxpos[1] + mc1, data.shape[1]),
+                       ::]
             data = data[maxslice]
-            # print(data.shape, "shape", maxpos, "maxpos")
 
-        return data.transpose()
+        return data
 
     @abstractmethod
     def correct(self, data):
@@ -131,7 +131,6 @@ class Detector_e4m(Detector):
     Subclass of Detector. Encapsulates "e4m" detector.
     """
     name = "e4m"
-    dims = (2167, 2070)
     pixel = (75.0e-6, 75e-6)
     pixelorientation = ('x+', 'y-')  # in xrayutilities notation
     darkfield_filename = None
@@ -169,9 +168,15 @@ class Detector_e4m(Detector):
         self.darkfield = self.darkfield[np.s_[r[1]:r[3], r[0]:r[2]]]
 
         if 'roi' in params:
-            roi = params['roi']
-            self.slice = np.s_[:, roi[0]:roi[1], roi[2]:roi[3]]
-            self.darkfield = self.darkfield[np.s_[roi[0]:roi[1], roi[2]:roi[3]]]
+            if params['detector_module'] > 1:
+                print('Warning: roi parameter is only applied for detector_module 0 or 1.')
+            else:
+                # crops roi related to the module only
+                roi = params['roi']
+                self.slice = np.s_[:, roi[1]:roi[3], roi[0]:roi[2]]
+                self.darkfield = self.darkfield[np.s_[roi[1]:roi[3], roi[0]:roi[2]]]
+            
+        self.darkfield = self.darkfield.T
 
         self.min_frames = params.get('min_frames', 0)
         self.exclude_scans = params.get('exclude_scans', None)
@@ -180,7 +185,7 @@ class Detector_e4m(Detector):
 
     def correct(self, data):
         if len(self.darkfield.shape) == 2:
-            cor = self.darkfield[np.newaxis, :, :]
+            cor = self.darkfield[:, :, np.newaxis]
         else:
             cor = self.darkfield
         data = data * cor
@@ -223,7 +228,6 @@ class Detector_e4m(Detector):
 
 class Detector_e2500(Detector):
     name = "e2500"
-    dims = (1028, 512)
     pixel = (75.0e-6, 75e-6)
     pixelorientation = ('x+', 'y-')  # in xrayutilities notation
     darkfield_filename = None
@@ -234,6 +238,7 @@ class Detector_e2500(Detector):
     module_x = [0]
     module_y = [0]
     ROIS = {0: (0, 0, 1028, 512)}
+    
 
     bad_pix = np.array([[67, 512],
                         [67, 513],
@@ -258,11 +263,13 @@ class Detector_e2500(Detector):
         # keep parameters that are relevant to the detector
         self.data_dir = params.get('data_dir')
         self.sample = params.get('sample')
+        r = self.ROIS[params.get('detector_module', 0)]
+        self.slice = np.s_[:, r[1]:r[3], r[0]:r[2]]
         if 'darkfield_filename' in params:
-            mask = np.load(params['darkfield_filename'])
+            mask = np.load(params['darkfield_filename']).T
             mask = np.where(mask > 0, 0, 1)
         else:
-            mask = np.ones(self.dims).transpose()
+            mask = np.ones((r[3]-r[1], r[2]-r[0]))
             mask[self.bad_pix[:, 0], self.bad_pix[:, 1]] = 0
         self.darkfield = mask
 
@@ -272,14 +279,13 @@ class Detector_e2500(Detector):
                     self.darkfield[:, np.s_[c + x - 2:c + x + 2]] = 0
             for c in self.module_y:
                 self.darkfield[np.s_[c + 256 - 2:c + 256 + 2], :] = 0
-
-        r = self.ROIS[params.get('detector_module', 0)]
-        self.slice = np.s_[:, r[1]:r[3], r[0]:r[2]]
-        self.darkfield = self.darkfield[np.s_[r[1]:r[3], r[0]:r[2]]]
+               
         if 'roi' in params:
+        # crops to the given roi size, for module 0 only
             roi = params['roi']
-            self.slice = np.s_[:, roi[2]:roi[3], roi[0]:roi[1]]
-            self.darkfield = self.darkfield[np.s_[roi[2]:roi[3], roi[0]:roi[1]]]
+            self.slice = np.s_[:, roi[1]:roi[3], roi[0]:roi[2]]
+            self.darkfield = self.darkfield[np.s_[roi[1]:roi[3], roi[0]:roi[2]]]
+        self.darkfield = self.darkfield.T
 
         self.min_frames = params.get('min_frames', 0)
         self.exclude_scans = params.get('exclude_scans', None)
@@ -288,7 +294,7 @@ class Detector_e2500(Detector):
 
     def correct(self, data):
         if len(self.darkfield.shape) == 2:
-            cor = self.darkfield[np.newaxis, :, :]
+            cor = self.darkfield[:, :, np.newaxis]
         else:
             cor = self.darkfield
         data = data * cor

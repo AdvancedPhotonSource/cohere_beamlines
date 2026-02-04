@@ -108,21 +108,29 @@ class Detector(ABC):
         arr = np.stack(ordered_slices, axis=-1)
 
         if self.max_crop is not None:
+            def isOnedge(maxindx):
+                onedge = False
+                for i in range(len(maxindx)):
+                    if maxindx[i] == 0 or maxindx[i] > arr.shape[i] - 1:
+                        onedge = True
+                        break
+                return onedge
+
             # check if the max value is bad pixel. If so zero it and get the next max value.
             maxindx = np.unravel_index(arr.argmax(), arr.shape)
-            while (arr[maxindx[0] + 1, maxindx[1], maxindx[2]] == 0
+            while ( isOnedge(maxindx) or
+                    arr[maxindx[0] + 1, maxindx[1], maxindx[2]] == 0
                    and arr[maxindx[0] - 1, maxindx[1], maxindx[2]] == 0
                    or arr[maxindx[0], maxindx[1] + 1, maxindx[2]] == 0
                    and arr[maxindx[0], maxindx[1] - 1, maxindx[2]] == 0):
                 arr[maxindx] = 0.0
                 maxindx = np.unravel_index(arr.argmax(), arr.shape)
 
-            mc0 = int(self.max_crop[0] / 2)
-            mc1 = int(self.max_crop[1] / 2)
-            roislice1 = slice(maxindx[0] - mc0, maxindx[0] + mc0)
-            roislice2 = slice(maxindx[1] - mc1, maxindx[1] + mc1)
-            arr = arr[roislice1, roislice2, :]
-
+            mc0 = self.max_crop[0] // 2
+            mc1 = self.max_crop[1] // 2
+            cropslice0 = slice(max(0, maxindx[0] - mc0), min(maxindx[0] + mc0, arr.shape[0]))
+            cropslice1 = slice(max(0, maxindx[1] - mc1), min(maxindx[1] + mc1, arr.shape[1]))
+            arr = arr[cropslice0, cropslice1, :]
         return arr
 
 
