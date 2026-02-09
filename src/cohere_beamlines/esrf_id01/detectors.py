@@ -7,7 +7,7 @@
 import numpy as np
 import h5py
 from abc import ABC, abstractmethod
-
+from cohere_ui.api.preprocessor import get_max_crop_slice
 from cohere_core import data
 
 
@@ -80,22 +80,7 @@ class Detector(ABC):
             # the rdata already is corrected
 
         if self.max_crop is not None:
-            for k in data.keys():
-                arr = data[k]
-                maxindx = np.unravel_index(arr.argmax(), arr.shape)
-                while (arr[maxindx[0] + 1, maxindx[1], maxindx[2]] == 0
-                       and arr[maxindx[0] - 1, maxindx[1], maxindx[2]] == 0
-                       or arr[maxindx[0], maxindx[1] + 1, maxindx[2]] == 0
-                       and arr[maxindx[0], maxindx[1] - 1, maxindx[2]] == 0):
-                    arr[maxindx] = 0.0
-                    maxindx = np.unravel_index(arr.argmax(), arr.shape)
-
-                mc0 = int(self.max_crop[0] / 2)
-                mc1 = int(self.max_crop[1] / 2)
-                roislice1 = slice(maxindx[0] - mc0, maxindx[0] + mc0)
-                roislice2 = slice(maxindx[1] - mc1, maxindx[1] + mc1)
-                arr = arr[roislice1, roislice2, :]
-                data[k] = arr
+            data = get_max_crop_slice(data, self.max_crop)
 
         return data
 

@@ -10,6 +10,7 @@ from abc import ABC, abstractmethod
 import h5py
 import cohere_beamlines.Petra3_P10.p10_scan_reader as p10sr
 import cohere_core.utilities as ut
+from cohere_ui.api.preprocessor import get_max_crop_slice
 
 
 class Detector(ABC):
@@ -46,9 +47,7 @@ class Detector(ABC):
             scan_range = scans[sr_idx]
             scans_dirs = scans_dirs_ranges[sr_idx]
             for scan in range(scan_range[0], scan_range[1] + 1):
-                if self.exclude_scans is not None and scan in self.exclude_scans:
-                    continue
-                if self.exclude_scans is not None and scan in self.exclude_scans:
+                if scan in self.exclude_scans:
                     continue
                 scandir = ut.join(ut.join(self.data_dir, self.sample + '_{:05d}'.format(scan)))
                 if not os.path.isdir(scandir):
@@ -87,33 +86,7 @@ class Detector(ABC):
         data = self.correct(data)
         
         if self.max_crop is not None:
-            maxpos = np.unravel_index(data.argmax(), data.shape)
-
-            def is_on_edge(maxindx):
-                onedge = False
-                for i in range(len(maxindx)):
-                    if maxindx[i] == 0 or maxindx[i] > data.shape[i] - 1:
-                        onedge = True
-                        break
-                return onedge
-
-            # check if the max value is bad pixel. If so zero it and get the next max value.
-            maxpos = np.unravel_index(data.argmax(), data.shape)
-            while (is_on_edge(maxpos) or
-                   data[maxpos[0] + 1, maxpos[1], maxpos[2]] == 0
-                   and data[maxpos[0] - 1, maxpos[1], maxpos[2]] == 0
-                   or data[maxpos[0], maxpos[1] + 1, maxpos[2]] == 0
-                   and data[maxpos[0], maxpos[1] - 1, maxpos[2]] == 0):
-                data[maxpos] = 0.0
-                maxpos = np.unravel_index(data.argmax(), data.shape)
-
-            mc0 = self.max_crop[0] // 2
-            mc1 = self.max_crop[1] // 2
-            maxslice = np.s_[
-                       max(0, maxpos[0] - mc0): min(maxpos[0] + mc0, data.shape[0]),
-                       max(0, maxpos[1] - mc1): min(maxpos[1] + mc1, data.shape[1]),
-                       ::]
-            data = data[maxslice]
+            data = get_max_crop_slice(data, self.max_crop)
 
         return data
 
@@ -179,7 +152,7 @@ class Detector_e4m(Detector):
         self.darkfield = self.darkfield.T
 
         self.min_frames = params.get('min_frames', 0)
-        self.exclude_scans = params.get('exclude_scans', None)
+        self.exclude_scans = params.get('exclude_scans', [])
         self.max_crop = params.get('max_crop', None)
 
 
@@ -288,7 +261,7 @@ class Detector_e2500(Detector):
         self.darkfield = self.darkfield.T
 
         self.min_frames = params.get('min_frames', 0)
-        self.exclude_scans = params.get('exclude_scans', None)
+        self.exclude_scans = params.get('exclude_scans', [])
         self.max_crop = params.get('max_crop', None)
 
 

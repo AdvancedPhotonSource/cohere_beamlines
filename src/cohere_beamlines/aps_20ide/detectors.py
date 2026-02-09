@@ -7,6 +7,7 @@
 import os
 import numpy as np
 import cohere_core.utilities as ut
+from cohere_ui.api.preprocessor import get_max_crop_slice
 from abc import ABC, abstractmethod
 import h5py
 
@@ -99,12 +100,13 @@ class Detector(ABC):
         h5file = scan_info
         with h5py.File(h5file, "r") as h5f:
             arr = h5f['exchange/data'][:].T
+            arr = arr[self.slice]
             if self.whitefield is None:
                 # the whitefield was not configured, try to read it from h5 file
                 try:
                     whitefield = h5f['exchange/data_white'][:].T
                     if np.sum(whitefield) > 0:
-                        self.whitefield = whitefield[self.roi[0]:self.roi[1], self.roi[2]:self.roi[3]]
+                        self.whitefield = whitefield[self.roi_slice]
                         # the code below is specific to ASI detector
                         self.wfavg = np.average(self.whitefield)
                         self.wfstd = np.std(self.whitefield)
@@ -118,41 +120,17 @@ class Detector(ABC):
                 try:
                     darkfield = h5f['exchange/data_dark'][:].T
                     if np.sum(whitefield) > 0:
-                        self.darkfield = darkfield[self.roi[0]:self.roi[1], self.roi[2]:self.roi[3]]
+                        self.darkfield = darkfield[self.roi_slice]
                         self.darkfield = np.where(self.darkfield > 0, 0.0, 1.0)
                         if self.whitefield is not None:
                                 self.whitefield = self.darkfield * self.whitefield  # kill known bad pixel
                 except:
                     pass
 
-        # apply roi
-        arr = arr[self.roi[0]:self.roi[1], self.roi[2]:self.roi[3], :]
         arr = self.correct(arr)
 
         if self.max_crop is not None:
-            def isOnedge(maxindx):
-                onedge = False
-                for i in range(len(maxindx)):
-                    if maxindx[i] == 0 or maxindx[i] > arr.shape[i] - 1:
-                        onedge = True
-                        break
-                return onedge
-
-            # check if the max value is bad pixel. If so zero it and get the next max value.
-            maxindx = np.unravel_index(arr.argmax(), arr.shape)
-            while ( isOnedge(maxindx) or
-                    arr[maxindx[0] + 1, maxindx[1], maxindx[2]] == 0
-                   and arr[maxindx[0] - 1, maxindx[1], maxindx[2]] == 0
-                   or arr[maxindx[0], maxindx[1] + 1, maxindx[2]] == 0
-                   and arr[maxindx[0], maxindx[1] - 1, maxindx[2]] == 0):
-                arr[maxindx] = 0.0
-                maxindx = np.unravel_index(arr.argmax(), arr.shape)
-
-            mc0 = self.max_crop[0] // 2
-            mc1 = self.max_crop[1] // 2
-            cropslice0 = slice(max(0, maxindx[0] - mc0), min(maxindx[0] + mc0, arr.shape[0]))
-            cropslice1 = slice(max(0, maxindx[1] - mc1), min(maxindx[1] + mc1, arr.shape[1]))
-            arr = arr[cropslice0, cropslice1, :]
+            arr = get_max_crop_slice(arr, self.max_crop)
 
         return arr
 
@@ -185,11 +163,15 @@ class ASI(Detector):
         # Can include data directory, whitefield_filename, roi, etc.
         # keep parameters that are relevant to the detector
         self.data_dir = params.get('data_dir')
-        self.roi = params.get('roi', ASI.roi)
+        roi = params.get('roi', ASI.roi)
+        # slices reflect transposed data
+        self.roi_slice = np.s_[roi[0]:roi[0] + roi[1], roi[2]:roi[2] + roi[3]]
+        self.slice = np.s_[roi[0]:roi[0] + roi[1], roi[2]:roi[2] + roi[3], :]
         self.Imult = params.get('Imult', ASI.Imult)
         # init darkfield and whitefield if given
         if 'whitefield_filename' in params:
-            self.whitefield = ut.read_tif(params.get('whitefield_filename'))[self.roi[0]:self.roi[1], self.roi[2]:self.roi[3]]
+            self.whitefield = ut.read_tif(params.get('whitefield_filename')).T
+            self.whitefield = self.whitefield[self.roi_slice]
             # the code below is specific to ASI detector
             self.wfavg = np.average(self.whitefield)
             self.wfstd = np.std(self.whitefield)
@@ -197,10 +179,12 @@ class ASI(Detector):
             self.Imult = params.get('Imult', self.wfavg)
 
         if 'darkfield_filename' in params:
-            self.darkfield = ut.read_tif(params.get('darkfield_filename'))[self.roi[0]:self.roi[1], self.roi[2]:self.roi[3]]
+            self.darkfield = ut.read_tif(params.get('darkfield_filename')).T
+            self.darkfield = self.darkfield[self.roi_slice]
             self.darkfield = np.where(self.darkfield > 0, 0.0, 1.0)
             if self.whitefield is not None:
                     self.whitefield = self.darkfield * self.whitefield  # kill known bad pixel
+
         self.min_frames = params.get('min_frames', 0)
         self.exclude_scans = params.get('exclude_scans', [])
         self.max_crop = params.get('max_crop', None)
@@ -269,10 +253,15 @@ class BSE(Detector):
         # Can include data directory, whitefield_filename, roi, etc.
         # keep parameters that are relevant to the detector
         self.data_dir = params.get('data_dir')
-        self.roi = params.get('roi', BSE.roi)
+        roi = params.get('roi', BSE.roi)
+        # slices reflect transposed data
+        self.roi_slice = np.s_[roi[0]:roi[0] + roi[1], roi[2]:roi[2] + roi[3]]
+        self.slice = np.s_[roi[0]:roi[0] + roi[1], roi[2]:roi[2] + roi[3], :]
         if 'darkfield_filename' in params:
-            self.darkfield = ut.read_tif(params.get('darkfield_filename'))[self.roi[0]:self.roi[1], self.roi[2]:self.roi[3]]
+            self.darkfield = ut.read_tif(params.get('darkfield_filename')).T
+            self.darkfield = self.darkfield[self.roi_slice]
             self.darkfield = np.where(self.darkfield > 0, 0.0, 1.0)
+
         self.min_frames = params.get('min_frames', 0)
         self.exclude_scans = params.get('exclude_scans', [])
         self.max_crop = params.get('max_crop', None)

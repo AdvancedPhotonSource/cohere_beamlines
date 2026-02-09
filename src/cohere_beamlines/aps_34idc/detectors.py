@@ -8,6 +8,7 @@ import numpy as np
 import os
 import re
 import cohere_core.utilities as ut
+from cohere_ui.api.preprocessor import get_max_crop_slice
 from abc import ABC, abstractmethod
 
 class Detector(ABC):
@@ -108,29 +109,8 @@ class Detector(ABC):
         arr = np.stack(ordered_slices, axis=-1)
 
         if self.max_crop is not None:
-            def isOnedge(maxindx):
-                onedge = False
-                for i in range(len(maxindx)):
-                    if maxindx[i] == 0 or maxindx[i] > arr.shape[i] - 1:
-                        onedge = True
-                        break
-                return onedge
+            arr = get_max_crop_slice(arr, self.max_crop)
 
-            # check if the max value is bad pixel. If so zero it and get the next max value.
-            maxindx = np.unravel_index(arr.argmax(), arr.shape)
-            while ( isOnedge(maxindx) or
-                    arr[maxindx[0] + 1, maxindx[1], maxindx[2]] == 0
-                   and arr[maxindx[0] - 1, maxindx[1], maxindx[2]] == 0
-                   or arr[maxindx[0], maxindx[1] + 1, maxindx[2]] == 0
-                   and arr[maxindx[0], maxindx[1] - 1, maxindx[2]] == 0):
-                arr[maxindx] = 0.0
-                maxindx = np.unravel_index(arr.argmax(), arr.shape)
-
-            mc0 = self.max_crop[0] // 2
-            mc1 = self.max_crop[1] // 2
-            cropslice0 = slice(max(0, maxindx[0] - mc0), min(maxindx[0] + mc0, arr.shape[0]))
-            cropslice1 = slice(max(0, maxindx[1] - mc1), min(maxindx[1] + mc1, arr.shape[1]))
-            arr = arr[cropslice0, cropslice1, :]
         return arr
 
 
@@ -177,7 +157,7 @@ class Detector_34idcTIM1(Detector):
         if 'darkfield_filename' in params:
             self.darkfield = ut.read_tif(params.get('darkfield_filename'))
         self.min_frames = params.get('min_frames', 0)
-        self.exclude_scans = params.get('exclude_scans', None)
+        self.exclude_scans = params.get('exclude_scans', [])
         self.max_crop = params.get('max_crop', None)
 
 

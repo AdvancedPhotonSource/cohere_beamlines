@@ -94,6 +94,21 @@ class InstrTab(QWidget):
         self.name = 'Instrument'
         self.conf_name = 'config_instr'
 
+
+    def toggle_config(self):
+        pass
+        # if self.main_win.multipeak.isChecked() or self.main_win.separate_scans.isChecked() or self.main_win.separate_scan_ranges.isChecked():
+        #     self.add_config = False
+        #     self.extended.clear_conf()
+        #     self.extended.spec_widget.hide()
+        # else:
+        #     self.add_config = True
+        #     self.extended.spec_widget.show()
+        #     self.extended.parse_spec()
+        # if self.main_win.loaded:
+        #     self.save_conf()
+
+
     def init(self, tabs, main_window):
         """
         Creates and initializes the 'Instrument' tab.
