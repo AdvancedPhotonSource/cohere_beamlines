@@ -6,20 +6,20 @@
 
 import numpy as np
 import os
-from abc import ABC, abstractmethod
+from cohere_beamlines.beam_detectors.common_det import Detector
+from abc import abstractmethod
 import h5py
 import cohere_beamlines.Petra3_P10.p10_scan_reader as p10sr
 import cohere_core.utilities as ut
-from cohere_ui.api.preprocessor import get_max_crop_slice
 
 
-class Detector(ABC):
+class petra10Detector(Detector):
     """
     Abstract class representing detector.
     """
 
-    def __init__(self, name="default"):
-        self.name = name
+    def __init__(self, params):
+        super(petra10Detector, self).__init__(params)
 
     def dirs4scans(self, scans):
         """
@@ -85,8 +85,11 @@ class Detector(ABC):
                 break
         data = self.correct(data)
         
+        if self.user_roi is not None:
+            data = self.get_user_roi_slice(data)
+
         if self.max_crop is not None:
-            data = get_max_crop_slice(data, self.max_crop)
+            data = self.get_max_crop_slice(data)
 
         return data
 
@@ -99,7 +102,7 @@ class Detector(ABC):
         :return: corrected frame
         """
 
-class Detector_e4m(Detector):
+class Detector_e4m(petra10Detector):
     """
     Subclass of Detector. Encapsulates "e4m" detector.
     """
@@ -121,7 +124,7 @@ class Detector_e4m(Detector):
     asic_x = (256, 515, 773)
 
     def __init__(self, params):
-        super(Detector_e4m, self).__init__(self.name)
+        super(Detector_e4m, self).__init__(params)
         # The detector attributes for background/whitefield/etc need to be set to read frames
         # this will capture things like data directory, whitefield_filename, etc.
         # keep parameters that are relevant to the detector
@@ -150,10 +153,6 @@ class Detector_e4m(Detector):
                 self.darkfield = self.darkfield[np.s_[roi[1]:roi[3], roi[0]:roi[2]]]
             
         self.darkfield = self.darkfield.T
-
-        self.min_frames = params.get('min_frames', 0)
-        self.exclude_scans = params.get('exclude_scans', [])
-        self.max_crop = params.get('max_crop', None)
 
 
     def correct(self, data):
@@ -199,7 +198,7 @@ class Detector_e4m(Detector):
             raise ValueError(msg)
 
 
-class Detector_e2500(Detector):
+class Detector_e2500(petra10Detector):
     name = "e2500"
     pixel = (75.0e-6, 75e-6)
     pixelorientation = ('x+', 'y-')  # in xrayutilities notation
@@ -230,7 +229,7 @@ class Detector_e2500(Detector):
                         [343, 560]])
 
     def __init__(self, params):
-        super(Detector_e2500, self).__init__(self.name)
+        super(Detector_e2500, self).__init__(params)
         # The detector attributes for background/whitefield/etc need to be set to read frames
         # this will capture things like data directory, whitefield_filename, etc.
         # keep parameters that are relevant to the detector
@@ -259,10 +258,6 @@ class Detector_e2500(Detector):
             self.slice = np.s_[:, roi[1]:roi[3], roi[0]:roi[2]]
             self.darkfield = self.darkfield[np.s_[roi[1]:roi[3], roi[0]:roi[2]]]
         self.darkfield = self.darkfield.T
-
-        self.min_frames = params.get('min_frames', 0)
-        self.exclude_scans = params.get('exclude_scans', [])
-        self.max_crop = params.get('max_crop', None)
 
 
     def correct(self, data):
@@ -296,15 +291,10 @@ class Detector_e2500(Detector):
             raise ValueError(msg)
 
 
+dets = {detector.name: detector for detector in petra10Detector.__subclasses__()}
+
 def create_detector(det_name, params):
-    for detector in Detector.__subclasses__():
-        if detector.name == det_name:
-            return detector(params)
-    msg = f'detector {det_name} not defined'
-    raise ValueError(msg)
-
-
-dets = {detector.name: detector for detector in Detector.__subclasses__()}
+   return dets[det_name](params)
 
 
 def get_pixel(det_name):
@@ -316,8 +306,5 @@ def get_pixel_orientation(det_name):
 
 
 def check_mandatory_params(det_name, params):
-    for detector in Detector.__subclasses__():
-        if detector.name == det_name:
-            return dets[det_name].check_mandatory_params(params)
-    msg = f'detector {det_name} not defined'
-    raise ValueError(msg)
+    return dets[det_name].check_mandatory_params(params)
+

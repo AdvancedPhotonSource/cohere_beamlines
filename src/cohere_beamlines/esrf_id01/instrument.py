@@ -15,7 +15,7 @@ class Instrument:
       It provides interface to get the classes encapsulating the diffractometer and detector.
     """
 
-    def __init__(self, h5file, diff_obj, det_obj, detector):
+    def __init__(self, diff_obj, det_obj, detector):
         """
         The constructor.
 
@@ -29,7 +29,6 @@ class Instrument:
         str
             a string containing error message or empty
         """
-        self.h5file = h5file
         self.diff_obj = diff_obj
         self.det_obj = det_obj
         self.detector = detector
@@ -48,7 +47,7 @@ class Instrument:
 
 
     def get_scan_array(self, scan_node):
-        return self.det_obj.get_scan_array(scan_node, self.h5file)
+        return self.det_obj.get_scan_array(scan_node)
 
 
     def get_geometry(self, shape, scan, conf_maps):
@@ -119,7 +118,7 @@ def create_instr(configs, **kwargs):
             config_params.update(configs['config_prep'])
         det_obj = det.create_detector(detector, config_params)
 
-    instr = Instrument(h5file, diff_obj, det_obj, detector)
+    instr = Instrument(diff_obj, det_obj, detector)
 
     scan = configs['config'].get('scan', None)
     if scan is not None:

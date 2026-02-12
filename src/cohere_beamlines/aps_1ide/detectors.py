@@ -7,20 +7,20 @@
 import os
 import numpy as np
 import cohere_core.utilities as ut
-from cohere_ui.api.preprocessor import get_max_crop_slice
-from abc import ABC, abstractmethod
+from cohere_beamlines.beam_detectors.common_det import Detector
+from abc import abstractmethod
 import re
 
 
-class Detector(ABC):
+class aps1Detector(Detector):
     """
     Class representing detector.
 
     Some functions are common for all detectors and are implemented in the base class.
     """
 
-    def __init__(self, name):
-        self.name = name
+    def __init__(self, params):
+        super(aps1Detector, self).__init__(params)
 
     def dirs4scans(self, scans):
         """
@@ -120,8 +120,11 @@ class Detector(ABC):
 
         arr = np.stack(ordered_slices, axis=-1)
 
+        if self.user_roi is not None:
+            arr = self.get_user_roi_slice(arr)
+
         if self.max_crop is not None:
-            arr = get_max_crop_slice(arr, self.max_crop)
+            arr = self.get_max_crop_slice(arr)
 
         return arr
 
@@ -136,7 +139,7 @@ class Detector(ABC):
         """
 
 
-class ASI(Detector):
+class ASI(aps1Detector):
     """
     Subclass of Detector. Encapsulates any detector. Values are based on "34idcTIM2" detector.
     """
@@ -148,7 +151,7 @@ class ASI(Detector):
     whitefield = None
 
     def __init__(self, params):
-        super(ASI, self).__init__(self.name)
+        super(ASI, self).__init__(params)
         # The detector attributes specific for the detector.
         # Can include data directory, whitefield_filename, roi, etc.
 
@@ -163,9 +166,6 @@ class ASI(Detector):
             self.wfstd = np.std(self.whitefield)
             self.whitefield = np.where(self.whitefield < self.wfavg - 3 * self.wfstd, 0, self.whitefield)
             self.Imult = params.get('Imult', self.wfavg)
-        self.min_frames = params.get('min_frames', 0)
-        self.exclude_scans = params.get('exclude_scans', [])
-        self.max_crop = params.get('max_crop', None)
 
 
     def correct_frame(self, frame_filename):
@@ -208,7 +208,7 @@ class ASI(Detector):
             raise ValueError(msg)
 
 
-class BSE(Detector):
+class BSE(aps1Detector):
     """
     Subclass of Detector. Encapsulates any detector. Values are based on "34idcTIM2" detector.
     """
@@ -221,7 +221,7 @@ class BSE(Detector):
     darkfield=None
 
     def __init__(self, params):
-        super(BSE, self).__init__(self.name)
+        super(BSE, self).__init__(params)
         # The detector attributes specific for the detector.
         # Can include data directory, whitefield_filename, roi, etc.
         # keep parameters that are relevant to the detector
@@ -230,9 +230,6 @@ class BSE(Detector):
             self.roi = params.get('roi')
         if 'darkfield_filename' in params:
            self.darkfield = ut.read_tif(params.get('darkfield_filename')).astype(np.int32)
-        self.min_frames = params.get('min_frames', 0)
-        self.exclude_scans = params.get('exclude_scans', [])
-        self.max_crop = params.get('max_crop', None)
 
 
     def correct_frame(self, frame_filename):
@@ -271,15 +268,11 @@ class BSE(Detector):
             raise ValueError(msg)
 
 
+dets = {detector.name: detector for detector in aps1Detector.__subclasses__()}
+
 def create_detector(det_name, params):
-    for detector in Detector.__subclasses__():
-        if detector.name == det_name:
-            return  detector(params)
-    msg = f'detector {det_name} not defined'
-    raise ValueError(msg)
+   return dets[det_name](params)
 
-
-dets = {detector.name: detector for detector in Detector.__subclasses__()}
 
 def get_pixel(det_name):
     return dets[det_name].pixel
@@ -290,8 +283,5 @@ def get_pixel_orientation(det_name):
 
 
 def check_mandatory_params(det_name, params):
-    for detector in Detector.__subclasses__():
-        if detector.name == det_name:
-            return dets[det_name].check_mandatory_params(params)
-    msg = f'detector {det_name} not defined'
-    raise ValueError(msg)
+    return dets[det_name].check_mandatory_params(params)
+

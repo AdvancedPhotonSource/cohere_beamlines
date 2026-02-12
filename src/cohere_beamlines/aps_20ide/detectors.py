@@ -7,20 +7,20 @@
 import os
 import numpy as np
 import cohere_core.utilities as ut
-from cohere_ui.api.preprocessor import get_max_crop_slice
-from abc import ABC, abstractmethod
+from cohere_beamlines.beam_detectors.common_det import Detector
+from abc import abstractmethod
 import h5py
 
 
-class Detector(ABC):
+class aps20Detector(Detector):
     """
     Class representing detector.
 
     Some functions are common for all detectors and are implemented in the base class.
     """
 
-    def __init__(self, name):
-        self.name = name
+    def __init__(self, params):
+        super(aps20Detector, self).__init__(params)
 
     def files4scans(self, scans):
         """
@@ -129,8 +129,11 @@ class Detector(ABC):
 
         arr = self.correct(arr)
 
+        if self.user_roi is not None:
+            arr = self.get_user_roi_slice(arr)
+
         if self.max_crop is not None:
-            arr = get_max_crop_slice(arr, self.max_crop)
+            arr = self.get_max_crop_slice(arr)
 
         return arr
 
@@ -143,7 +146,7 @@ class Detector(ABC):
         :return: corrected frame
         """
 
-class ASI(Detector):
+class ASI(aps20Detector):
     """
     Subclass of Detector. Encapsulates any detector. Values are based on "34idcTIM2" detector.
     """
@@ -158,7 +161,7 @@ class ASI(Detector):
     Imult = None
 
     def __init__(self, params):
-        super(ASI, self).__init__(self.name)
+        super(ASI, self).__init__(params)
         # The detector attributes specific for the detector.
         # Can include data directory, whitefield_filename, roi, etc.
         # keep parameters that are relevant to the detector
@@ -184,10 +187,6 @@ class ASI(Detector):
             self.darkfield = np.where(self.darkfield > 0, 0.0, 1.0)
             if self.whitefield is not None:
                     self.whitefield = self.darkfield * self.whitefield  # kill known bad pixel
-
-        self.min_frames = params.get('min_frames', 0)
-        self.exclude_scans = params.get('exclude_scans', [])
-        self.max_crop = params.get('max_crop', None)
 
 
     def correct(self, data):
@@ -236,7 +235,7 @@ class ASI(Detector):
             raise ValueError(msg)
 
 
-class BSE(Detector):
+class BSE(aps20Detector):
     """
     Subclass of Detector. Encapsulates any detector. Values are based on "34idcTIM2" detector.
     """
@@ -248,7 +247,7 @@ class BSE(Detector):
     darkfield=None
 
     def __init__(self, params):
-        super(BSE, self).__init__(self.name)
+        super(BSE, self).__init__(params)
         # The detector attributes specific for the detector.
         # Can include data directory, whitefield_filename, roi, etc.
         # keep parameters that are relevant to the detector
@@ -261,10 +260,6 @@ class BSE(Detector):
             self.darkfield = ut.read_tif(params.get('darkfield_filename')).T
             self.darkfield = self.darkfield[self.roi_slice]
             self.darkfield = np.where(self.darkfield > 0, 0.0, 1.0)
-
-        self.min_frames = params.get('min_frames', 0)
-        self.exclude_scans = params.get('exclude_scans', [])
-        self.max_crop = params.get('max_crop', None)
 
 
     def correct(self, data):
@@ -314,15 +309,11 @@ class BSE(Detector):
             raise ValueError(msg)
 
 
+dets = {detector.name: detector for detector in aps20Detector.__subclasses__()}
+
 def create_detector(det_name, params):
-    for detector in Detector.__subclasses__():
-        if detector.name == det_name:
-            return detector(params)
-    msg = f'detector {det_name} not defined'
-    raise ValueError(msg)
+   return dets[det_name](params)
 
-
-dets = {detector.name: detector for detector in Detector.__subclasses__()}
 
 def get_pixel(det_name):
     return dets[det_name].pixel
@@ -333,8 +324,4 @@ def get_pixel_orientation(det_name):
 
 
 def check_mandatory_params(det_name, params):
-    for detector in Detector.__subclasses__():
-        if detector.name == det_name:
-            return dets[det_name].check_mandatory_params(params)
-    msg = f'detector {det_name} not defined'
-    raise ValueError(msg)
+    return dets[det_name].check_mandatory_params(params)

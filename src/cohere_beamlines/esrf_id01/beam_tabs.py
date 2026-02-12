@@ -213,7 +213,7 @@ class InstrTab(QWidget):
         """
         instr_file = select_file(os.getcwd())
         if instr_file is not None:
-            conf_map = ut.read_config(instr_file.replace(os.sep, '/'))
+            conf_map = ut.read_config(instr_file)
             self.load_tab(conf_map)
         else:
             msg_window('please select valid instrument config file')

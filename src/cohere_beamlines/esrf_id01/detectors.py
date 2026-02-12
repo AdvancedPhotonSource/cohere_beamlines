@@ -6,18 +6,14 @@
 
 import numpy as np
 import h5py
-from abc import ABC, abstractmethod
-from cohere_ui.api.preprocessor import get_max_crop_slice
+from cohere_beamlines.beam_detectors.common_det import Detector
+from abc import abstractmethod
 from cohere_core import data
 
 
-class Detector(ABC):
-    def __init__(self, name="default"):
-        self.name = name
-
-
-    def node4scan(self, scan):
-        return f"{scan}.1/measurement/{self.name}"
+class esrf1Detector(Detector):
+    def __init__(self, params):
+        super(esrf1Detector, self).__init__(params)
 
 
     def nodes4scans(self, scans):
@@ -40,11 +36,10 @@ class Detector(ABC):
         for (start, stop) in scans:
             # todo add check
             scans_nodes_ranges.append([(i, f"{i}.1/measurement/{self.name}") for i in range(start, stop+1)if i not in self.exclude_scans])
-        print('scans_nodes_ranges', scans_nodes_ranges)
         return scans_nodes_ranges
 
 
-    def get_scan_array(self, scans, h5file):
+    def get_scan_array(self, node):
         """
         Reads raw rdata files from scan nodes, applies correction, and returns a dict with 3D corrected rdata
         for each node.
@@ -61,31 +56,29 @@ class Detector(ABC):
         """
         # TODO: need to find out how to parse roi from the h5file. For now it will return the full rdata.
         # It can be cropped during standard preprocessing
-        data = {}
-        with h5py.File(h5file, "r") as h5f:
-            for s in scans:
-                ar = np.array(h5f[self.node4scan(s)][:]).T
-                data[s] = ar
+        with h5py.File(self.h5file, "r") as h5f:
+            data = h5f[node][:].T
 
-        # print max
-        print('printing max for full scan(s)')
-        for s, d in data.items():
-            print('scan, shape, max coordinates, max value', s, d.shape, np.unravel_index(np.argmax(d), d.shape), np.max(d))
+        # # print max
+        print('shape, max coordinates, max value', data.shape, np.unravel_index(np.argmax(data), data.shape), np.max(data))
         # # cut out roi region
-        data = {s : d[self.roi[0] : self.roi[0] + self.roi[1], self.roi[2] : self.roi[2] + self.roi[3], :] for s,d in data.items()}
+        data = data[self.roi[0] : self.roi[0] + self.roi[1], self.roi[2] : self.roi[2] + self.roi[3], :]
         print('printing max for scan(s) trimmed to roi')
-        for s, d in data.items():
-            print('scan, shape, max coordinates, max value', s, d.shape, np.unravel_index(np.argmax(d), d.shape), np.max(d))
-            # apply correction if needed
-            # the rdata already is corrected
+        print('shape, max coordinates, max value', data.shape, np.unravel_index(np.argmax(data), data.shape), np.max(data))
+
+        # apply correction if needed
+        # the rdata already is corrected
+
+        if self.user_roi is not None:
+            data = self.get_user_roi_slice(data)
 
         if self.max_crop is not None:
-            data = get_max_crop_slice(data, self.max_crop)
+            data = self.get_max_crop_slice(data)
 
         return data
 
 
-class Detector_mpxgaas(Detector):
+class Detector_mpxgaas(esrf1Detector):
     """
     Subclass of Detector. Encapsulates "mpxgaas" detector.
     """
@@ -94,28 +87,21 @@ class Detector_mpxgaas(Detector):
     roi = (0, 516, 0, 516)
     pixel = (55.0e-6, 55e-6)
     pixelorientation = ('x-', 'y-')  # in xrayutilities notation
-    max_crop = None
-    min_frames = 0  # defines minimum frame scans in scan directory
-    exclude_scans = []
 
 
     def __init__(self, conf_params):
-        super(Detector_mpxgaas, self).__init__(self.name)
+        super(Detector_mpxgaas, self).__init__(conf_params)
         for key, val in conf_params.items():
             if val is None:
                 continue
             setattr(self, key, val)
 
 
+dets = {detector.name: detector for detector in esrf1Detector.__subclasses__()}
+
 def create_detector(det_name, params):
-    for detector in Detector.__subclasses__():
-        if detector.name == det_name:
-            return  detector(params)
-    msg = f'detector {det_name} not defined'
-    raise ValueError(msg)
+   return dets[det_name](params)
 
-
-dets = {detector.name: detector for detector in Detector.__subclasses__()}
 
 def get_pixel(det_name):
     return dets[det_name].pixel
@@ -123,3 +109,7 @@ def get_pixel(det_name):
 
 def get_pixel_orientation(det_name):
     return dets[det_name].pixelorientation
+
+
+def check_mandatory_params(det_name, params):
+    return dets[det_name].check_mandatory_params(params)

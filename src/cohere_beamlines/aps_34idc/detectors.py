@@ -8,16 +8,16 @@ import numpy as np
 import os
 import re
 import cohere_core.utilities as ut
-from cohere_ui.api.preprocessor import get_max_crop_slice
-from abc import ABC, abstractmethod
+from cohere_beamlines.beam_detectors.common_det import Detector
+from abc import abstractmethod
 
-class Detector(ABC):
+class aps34Detector(Detector):
     """
     Abstract class representing detector.
     """
 
-    def __init__(self, name):
-        self.name = name
+    def __init__(self, params):
+        super(aps34Detector, self).__init__(params)
 
 
     def dirs4scans(self, scans):
@@ -106,12 +106,15 @@ class Detector(ABC):
         ordered_keys = sorted(list(slices_files.keys()))
         ordered_slices = [self.correct_frame(slices_files[k]) for k in ordered_keys]
 
-        arr = np.stack(ordered_slices, axis=-1)
+        data = np.stack(ordered_slices, axis=-1)
+
+        if self.user_roi is not None:
+            data = self.get_user_roi_slice(data)
 
         if self.max_crop is not None:
-            arr = get_max_crop_slice(arr, self.max_crop)
+            data = self.get_max_crop_slice(data)
 
-        return arr
+        return data
 
 
     @abstractmethod
@@ -134,7 +137,7 @@ class Detector(ABC):
         """
 
 
-class Detector_34idcTIM1(Detector):
+class Detector_34idcTIM1(aps34Detector):
     """
     Subclass of Detector. Encapsulates "34idcTIM1" detector.
     """
@@ -148,7 +151,7 @@ class Detector_34idcTIM1(Detector):
     Imult = 1.0
 
     def __init__(self, params):
-        super(Detector_34idcTIM1, self).__init__(self.name)
+        super(Detector_34idcTIM1, self).__init__(params)
         # The detector attributes for background/whitefield/etc need to be set to read frames
         # this will capture things like data directory, darkfield_filename, etc.
         self.data_dir = params.get('data_dir') # mandatory
@@ -156,9 +159,6 @@ class Detector_34idcTIM1(Detector):
             self.roi = params.get('roi')
         if 'darkfield_filename' in params:
             self.darkfield = ut.read_tif(params.get('darkfield_filename'))
-        self.min_frames = params.get('min_frames', 0)
-        self.exclude_scans = params.get('exclude_scans', [])
-        self.max_crop = params.get('max_crop', None)
 
 
     # TIM1 only needs bad pixels deleted.  Even that is optional.
@@ -201,7 +201,7 @@ class Detector_34idcTIM1(Detector):
             raise ValueError(msg)
 
 
-class Detector_34idcTIM2(Detector):
+class Detector_34idcTIM2(aps34Detector):
     """
     Subclass of Detector. Encapsulates "34idcTIM2" detector.
     """
@@ -216,7 +216,7 @@ class Detector_34idcTIM2(Detector):
     Imult = None
 
     def __init__(self, params):
-        super(Detector_34idcTIM2, self).__init__(self.name)
+        super(Detector_34idcTIM2, self).__init__(params)
         # The detector attributes for background/whitefield/etc need to be set to read frames
         # this will capture things like data directory, whitefield_filename, etc.
         # keep parameters that are relevant to the detector
@@ -391,15 +391,11 @@ class Detector_34idcTIM2(Detector):
             raise ValueError(msg)
 
 
+dets = {detector.name: detector for detector in aps34Detector.__subclasses__()}
+
 def create_detector(det_name, params):
-    for detector in Detector.__subclasses__():
-        if detector.name == det_name:
-            return  detector(params)
-    msg = f'detector {det_name} not defined'
-    raise ValueError(msg)
+   return dets[det_name](params)
 
-
-dets = {detector.name: detector for detector in Detector.__subclasses__()}
 
 def get_pixel(det_name):
     return dets[det_name].pixel
@@ -410,8 +406,5 @@ def get_pixel_orientation(det_name):
 
 
 def check_mandatory_params(det_name, params):
-    for detector in Detector.__subclasses__():
-        if detector.name == det_name:
-            return dets[det_name].check_mandatory_params(params)
-    msg = f'detector {det_name} not defined'
-    raise ValueError(msg)
+    return dets[det_name].check_mandatory_params(params)
+

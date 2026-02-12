@@ -486,9 +486,8 @@ class InstrTab(QWidget):
         -------
         nothing
         """
-        darkfield_filename = select_file(os.getcwd().replace(os.sep, '/'))
+        darkfield_filename = select_file(os.getcwd())
         if darkfield_filename is not None:
-            darkfield_filename = darkfield_filename.replace(os.sep, '/')
             self.dark_file_button.setStyleSheet("Text-align:left")
             self.dark_file_button.setText(darkfield_filename)
         else:
@@ -505,9 +504,8 @@ class InstrTab(QWidget):
         -------
         nothing
         """
-        whitefield_filename = select_file(os.getcwd().replace(os.sep, '/'))
+        whitefield_filename = select_file(os.getcwd())
         if whitefield_filename is not None:
-            whitefield_filename = whitefield_filename.replace(os.sep, '/')
             self.white_file_button.setStyleSheet("Text-align:left")
             self.white_file_button.setText(whitefield_filename)
         else:
@@ -524,7 +522,7 @@ class InstrTab(QWidget):
         -------
         nothing
         """
-        data_dir = select_dir(os.getcwd().replace(os.sep, '/'))
+        data_dir = select_dir(os.getcwd())
         if data_dir is not None:
             self.data_dir_button.setStyleSheet("Text-align:left")
             self.data_dir_button.setText(data_dir)
@@ -557,7 +555,7 @@ class InstrTab(QWidget):
         """
         instr_file = select_file(os.getcwd())
         if instr_file is not None:
-            conf_map = ut.read_config(instr_file.replace(os.sep, '/'))
+            conf_map = ut.read_config(instr_file)
             self.load_tab(conf_map)
         else:
             msg_window('please select valid instrument config file')
