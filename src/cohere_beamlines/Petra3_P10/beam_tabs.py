@@ -10,6 +10,7 @@ from PyQt5.QtWidgets import *
 import ast
 import cohere_core.utilities as ut
 import cohere_beamlines.Petra3_P10.beam_verifier as ver
+import cohere_beamlines.Petra3_P10.diffractometers as diff
 
 
 def msg_window(text):
@@ -262,8 +263,6 @@ class SubInstrTab():
         if len(diffractometer) == 0:
             msg_window ('cannot parse fio, diffractometer not defined')
             return
-
-        import cohere_beamlines.Petra3_P10.diffractometers as diff
 
         if diffractometer not in diff.diffs.keys():
             msg_window (f'diffractometer {diffractometer} not defined')

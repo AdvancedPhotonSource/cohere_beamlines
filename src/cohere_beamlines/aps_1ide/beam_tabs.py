@@ -9,6 +9,8 @@ from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 import ast
 import cohere_core.utilities as ut
+import cohere_beamlines.aps_1ide.diffractometers as diff
+
 
 
 def msg_window(text):
@@ -220,8 +222,6 @@ class SubInstrTab():
         if len(self.instr_tab.vff_eta_offset.text()) == 0:
             msg_window ('cannot parse spec, vff_eta_offset not defined')
             return
-
-        import cohere_beamlines.aps_1ide.diffractometers as diff
 
         try:
             diff_obj = diff.create_diffractometer(diffractometer, {'specfile':specfile})

@@ -9,8 +9,8 @@ from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 import ast
 import cohere_core.utilities as ut
-import cohere_beamlines.aps_34idc.beam_verifier as ver
-import cohere_beamlines.aps_34idc.diffractometers as diff
+import cohere_beamlines.aps_7idd.beam_verifier as ver
+import cohere_beamlines.aps_7idd.diffractometers as diff
 
 
 def msg_window(text):
@@ -107,16 +107,18 @@ class SubInstrTab():
         self.spec_widget.setLayout(spec_layout)
         self.energy = QLineEdit()
         spec_layout.addRow("energy", self.energy)
-        self.delta = QLineEdit()
-        spec_layout.addRow("delta (deg)", self.delta)
-        self.gamma = QLineEdit()
-        spec_layout.addRow("gamma (deg)", self.gamma)
-        self.detdist = QLineEdit()
-        spec_layout.addRow("detdist (mm)", self.detdist)
-        self.th = QLineEdit()
-        spec_layout.addRow("th (deg)", self.th)
+        self.yaw = QLineEdit()
+        spec_layout.addRow("yaw (deg)", self.yaw)
+        self.pitch = QLineEdit()
+        spec_layout.addRow("pitch (deg)", self.pitch)
+        self.Radius = QLineEdit()
+        spec_layout.addRow("Radius (mm)", self.Radius)
+        self.wedge = QLineEdit()
+        spec_layout.addRow("wedge (deg)", self.wedge)
         self.chi = QLineEdit()
         spec_layout.addRow("chi (deg)", self.chi)
+        self.th = QLineEdit()
+        spec_layout.addRow("th (deg)", self.th)
         self.phi = QLineEdit()
         spec_layout.addRow("phi (deg)", self.phi)
         self.scanmot = QLineEdit()
@@ -127,9 +129,10 @@ class SubInstrTab():
         spec_layout.addRow("detector", self.detector)
 
         self.energy.textChanged.connect(lambda: set_overriden(self.energy))
-        self.delta.textChanged.connect(lambda: set_overriden(self.delta))
-        self.gamma.textChanged.connect(lambda: set_overriden(self.gamma))
-        self.detdist.textChanged.connect(lambda: set_overriden(self.detdist))
+        self.yaw.textChanged.connect(lambda: set_overriden(self.yaw))
+        self.pitch.textChanged.connect(lambda: set_overriden(self.pitch))
+        self.Radius.textChanged.connect(lambda: set_overriden(self.Radius))
+        self.wedge.textChanged.connect(lambda: set_overriden(self.wedge))
         self.th.textChanged.connect(lambda: set_overriden(self.th))
         self.chi.textChanged.connect(lambda: set_overriden(self.chi))
         self.phi.textChanged.connect(lambda: set_overriden(self.phi))
@@ -155,15 +158,18 @@ class SubInstrTab():
         if 'energy' in conf_map:
             self.energy.setText(str(conf_map['energy']).replace(" ", ""))
             self.energy.setStyleSheet('color: black')
-        if 'delta' in conf_map:
-            self.delta.setText(str(conf_map['delta']).replace(" ", ""))
-            self.delta.setStyleSheet('color: black')
-        if 'gamma' in conf_map:
-            self.gamma.setText(str(conf_map['gamma']).replace(" ", ""))
-            self.gamma.setStyleSheet('color: black')
-        if 'detdist' in conf_map:
-            self.detdist.setText(str(conf_map['detdist']).replace(" ", ""))
-            self.detdist.setStyleSheet('color: black')
+        if 'yaw' in conf_map:
+            self.yaw.setText(str(conf_map['yaw']).replace(" ", ""))
+            self.yaw.setStyleSheet('color: black')
+        if 'pitch' in conf_map:
+            self.pitch.setText(str(conf_map['pitch']).replace(" ", ""))
+            self.pitch.setStyleSheet('color: black')
+        if 'Radius' in conf_map:
+            self.Radius.setText(str(conf_map['Radius']).replace(" ", ""))
+            self.Radius.setStyleSheet('color: black')
+        if 'wedge' in conf_map:
+            self.wedge.setText(str(conf_map['wedge']).replace(" ", ""))
+            self.wedge.setStyleSheet('color: black')
         if 'th' in conf_map:
             self.th.setText(str(conf_map['th']).replace(" ", ""))
             self.th.setStyleSheet('color: black')
@@ -186,9 +192,10 @@ class SubInstrTab():
 
     def clear_conf(self):
         self.energy.setText('')
-        self.delta.setText('')
-        self.gamma.setText('')
-        self.detdist.setText('')
+        self.yaw.setText('')
+        self.pitch.setText('')
+        self.Radius.setText('')
+        self.wedge.setText('')
         self.th.setText('')
         self.chi.setText('')
         self.phi.setText('')
@@ -211,12 +218,14 @@ class SubInstrTab():
         conf_map = {}
         if len(self.energy.text()) > 0:
             conf_map['energy'] = ast.literal_eval(str(self.energy.text()))
-        if len(self.delta.text()) > 0:
-            conf_map['delta'] = ast.literal_eval(str(self.delta.text()))
-        if len(self.gamma.text()) > 0:
-            conf_map['gamma'] = ast.literal_eval(str(self.gamma.text()))
-        if len(self.detdist.text()) > 0:
-            conf_map['detdist'] = ast.literal_eval(str(self.detdist.text()))
+        if len(self.yaw.text()) > 0:
+            conf_map['yaw'] = ast.literal_eval(str(self.yaw.text()))
+        if len(self.pitch.text()) > 0:
+            conf_map['pitch'] = ast.literal_eval(str(self.pitch.text()))
+        if len(self.Radius.text()) > 0:
+            conf_map['Radius'] = ast.literal_eval(str(self.Radius.text()))
+        if len(self.wedge.text()) > 0:
+            conf_map['wedge'] = ast.literal_eval(str(self.wedge.text()))
         if len(self.th.text()) > 0:
             conf_map['th'] = ast.literal_eval(str(self.th.text()))
         if len(self.chi.text()) > 0:
@@ -273,12 +282,15 @@ class SubInstrTab():
         if 'energy' in spec_dict:
             self.energy.setText(str(spec_dict['energy']))
             self.energy.setStyleSheet('color: blue')
-        if 'delta' in spec_dict:
-            self.delta.setText(str(spec_dict['delta']))
-            self.delta.setStyleSheet('color: blue')
-        if 'gamma' in spec_dict:
-            self.gamma.setText(str(spec_dict['gamma']))
-            self.gamma.setStyleSheet('color: blue')
+        if 'yaw' in spec_dict:
+            self.yaw.setText(str(spec_dict['yaw']))
+            self.yaw.setStyleSheet('color: blue')
+        if 'pitch' in spec_dict:
+            self.pitch.setText(str(spec_dict['pitch']))
+            self.pitch.setStyleSheet('color: blue')
+        if 'wedge' in spec_dict:
+            self.wedge.setText(str(spec_dict['wedge']))
+            self.wedge.setStyleSheet('color: blue')
         if 'th' in spec_dict:
             self.th.setText(str(spec_dict['th']))
             self.th.setStyleSheet('color: blue')
@@ -288,9 +300,9 @@ class SubInstrTab():
         if 'phi' in spec_dict:
             self.phi.setText(str(spec_dict['phi']))
             self.phi.setStyleSheet('color: blue')
-        if 'detdist' in spec_dict:
-            self.detdist.setText(str(spec_dict['detdist']))
-            self.detdist.setStyleSheet('color: blue')
+        if 'radius' in spec_dict:
+            self.Radius.setText(str(spec_dict['radius']))
+            self.Radius.setStyleSheet('color: blue')
         if 'scanmot' in spec_dict:
             self.scanmot.setText(str(spec_dict['scanmot']))
             self.scanmot.setStyleSheet('color: blue')
