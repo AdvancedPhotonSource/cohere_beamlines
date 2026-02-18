@@ -58,7 +58,7 @@ class Diffractometer_20ide(Diffractometer):
         super(Diffractometer_20ide, self).__init__('20ide')
         self.data_dir = params.get('data_dir', None)
 
-    def parse_h5(self, scan):
+    def parse_metadata(self, scan):
         """
         Reads parameters from h5 file for given scan.
 
@@ -153,7 +153,7 @@ class Diffractometer_20ide(Diffractometer):
         """
         params = {}
         # parse h5 file for metadata
-        params.update(self.parse_h5(scan))
+        params.update(self.parse_metadata(scan))
         # override with config params
         params.update(conf_params)
         self.check_params(params)

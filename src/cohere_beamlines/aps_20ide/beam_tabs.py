@@ -9,6 +9,7 @@ from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 import ast
 import cohere_core.utilities as ut
+import cohere_beamlines.aps_20ide.diffractometers as diff
 
 
 def msg_window(text):
@@ -85,6 +86,149 @@ def set_overriden(item):
     """
     item.setStyleSheet('color: black')
 
+
+class SubInstrTab():
+    def init(self, instr_tab, main_window):
+        """
+        Creates and initializes the 'Instrument' tab.
+        Parameters
+        ----------
+        none
+        Returns
+        -------
+        nothing
+        """
+        self.main_window = main_window
+        self.instr_tab = instr_tab
+
+        self.meta_widget = QWidget()
+        spec_layout = QFormLayout()
+        self.meta_widget.setLayout(spec_layout)
+        self.energy = QLineEdit()
+        spec_layout.addRow("energy", self.energy)
+        self.DetX = QLineEdit()
+        spec_layout.addRow("DetX (m)", self.DetX)
+        self.DetY = QLineEdit()
+        spec_layout.addRow("DetY (m)", self.DetY)
+        self.DetZ = QLineEdit()
+        spec_layout.addRow("DetZ (m)", self.DetZ)
+
+        self.energy.textChanged.connect(lambda: set_overriden(self.energy))
+        self.DetZ.textChanged.connect(lambda: set_overriden(self.DetZ))
+        self.DetX.textChanged.connect(lambda: set_overriden(self.DetX))
+        self.DetY.textChanged.connect(lambda: set_overriden(self.DetY))
+
+
+    def load_tab(self, conf_map):
+        """
+        It verifies given configuration file, reads the parameters, and fills out the window.
+        Parameters
+        ----------
+        conf : dict
+            configuration (config_instr)
+        Returns
+        -------
+        nothing
+        """
+        self.parse_metadata()
+
+        # if parameters are configured, override the readings from spec file
+        if 'energy' in conf_map:
+            self.energy.setText(str(conf_map['energy']).replace(" ", ""))
+            self.energy.setStyleSheet('color: black')
+        if 'DetX' in conf_map:
+            self.DetX.setText(str(conf_map['DetX']).replace(" ", ""))
+            self.DetX.setStyleSheet('color: black')
+        if 'DetY' in conf_map:
+            self.DetY.setText(str(conf_map['DetY']).replace(" ", ""))
+            self.DetY.setStyleSheet('color: black')
+        if 'DetZ' in conf_map:
+            self.DetZ.setText(str(conf_map['DetZ']).replace(" ", ""))
+            self.DetZ.setStyleSheet('color: black')
+
+
+    def clear_conf(self):
+        self.energy.setText('')
+        self.DetX.setText('')
+        self.DetY.setText('')
+        self.DetZ.setText('')
+
+
+    def get_instr_config(self):
+        """
+        It reads parameters related to instrument from the window into a dictionary.
+        Parameters
+        ----------
+        none
+        Returns
+        -------
+        conf_map : dict
+            contains parameters read from window
+        """
+        conf_map = {}
+        if len(self.energy.text()) > 0:
+            conf_map['energy'] = ast.literal_eval(str(self.energy.text()))
+        if len(self.DetX.text()) > 0:
+            conf_map['DetX'] = ast.literal_eval(str(self.DetX.text()))
+        if len(self.DetY.text()) > 0:
+            conf_map['DetY'] = ast.literal_eval(str(self.DetY.text()))
+        if len(self.DetZ.text()) > 0:
+            conf_map['DetZ'] = ast.literal_eval(str(self.DetZ.text()))
+
+        return conf_map
+
+
+    def parse_metadata(self):
+        """
+        Calls utility function to parse spec file. Displas the parsed parameters in the window with blue text.
+        Parameters
+        ----------
+        none
+        Returns
+        -------
+        nothing
+        """
+        if not self.main_window.loaded and not self.main_window.is_exp_set():
+            return
+        scan = str(self.main_window.scan_widget.text())
+        if len(scan) == 0:
+            msg_window ('cannot parse metadata, scan not defined')
+            return
+
+        diffractometer = self.instr_tab.diffractometer.text()
+        if len(diffractometer) == 0:
+            msg_window ('cannot parse metadata, diffractometer not defined')
+            return
+
+        data_dir = self.instr_tab.data_dir_button.text()
+        if len(data_dir) == 0:
+            msg_window ('cannot parse metadata, data_dir not defined')
+            return
+
+        try:
+            diff_obj = diff.create_diffractometer(diffractometer, {'data_dir' : data_dir})
+        except Exception as e:
+            msg_window (str(e))
+            return
+
+        last_scan = int(scan.split('-')[-1].split(',')[-1])
+        meta_dict = diff_obj.parse_metadata(last_scan)
+        if meta_dict is None:
+            return
+        if 'energy' in meta_dict:
+            self.energy.setText(str(meta_dict['energy']))
+            self.energy.setStyleSheet('color: blue')
+        if 'DetX' in meta_dict:
+            self.DetX.setText(str(meta_dict['DetX']))
+            self.DetX.setStyleSheet('color: blue')
+        if 'DetY' in meta_dict:
+            self.DetY.setText(str(meta_dict['DetY']))
+            self.DetY.setStyleSheet('color: blue')
+        if 'DetZ' in meta_dict:
+            self.DetZ.setText(str(meta_dict['DetZ']))
+            self.DetZ.setStyleSheet('color: blue')
+
+
 class InstrTab(QWidget):
     def __init__(self, parent=None):
         """
@@ -96,17 +240,16 @@ class InstrTab(QWidget):
 
 
     def toggle_config(self):
-        pass
-        # if self.main_win.multipeak.isChecked() or self.main_win.separate_scans.isChecked() or self.main_win.separate_scan_ranges.isChecked():
-        #     self.add_config = False
-        #     self.extended.clear_conf()
-        #     self.extended.spec_widget.hide()
-        # else:
-        #     self.add_config = True
-        #     self.extended.spec_widget.show()
-        #     self.extended.parse_spec()
-        # if self.main_win.loaded:
-        #     self.save_conf()
+        if self.main_win.multipeak.isChecked() or self.main_win.separate_scans.isChecked() or self.main_win.separate_scan_ranges.isChecked():
+            self.add_config = False
+            self.extended.clear_conf()
+            self.extended.meta_widget.hide()
+        else:
+            self.add_config = True
+            self.extended.meta_widget.show()
+            self.extended.parse_metadata()
+        if self.main_win.loaded:
+            self.save_conf()
 
 
     def init(self, tabs, main_window):
@@ -121,6 +264,13 @@ class InstrTab(QWidget):
         """
         self.tabs = tabs
         self.main_win = main_window
+        self.extended = None
+        if main_window.multipeak.isChecked() or main_window.separate_scans.isChecked() or main_window.separate_scan_ranges.isChecked():
+            self.add_config = False
+        else:
+            self.add_config = True
+        self.extended = SubInstrTab()
+        self.extended.init(self, main_window)
 
         tab_layout = QVBoxLayout()
         gen_layout = QFormLayout()
@@ -138,17 +288,10 @@ class InstrTab(QWidget):
         gen_layout.addRow("detector", self.detector)
         self.roi = QLineEdit()
         gen_layout.addRow("detector area (roi)", self.roi)
-        self.energy = QLineEdit()
-        gen_layout.addRow("energy", self.energy)
-        self.DetZ = QLineEdit()
-        gen_layout.addRow("DetZ (mm)", self.DetZ)
-        self.DetX = QLineEdit()
-        gen_layout.addRow("DetX (mm)", self.DetX)
-        self.DetY = QLineEdit()
-        gen_layout.addRow("DetY (mm)", self.DetY)
-        # self.samRy = QLineEdit()
-        # gen_layout.addRow("samRy", self.samRy)
         tab_layout.addLayout(gen_layout)
+        tab_layout.addWidget(self.extended.meta_widget)
+        if not self.add_config:
+            self.extended.meta_widget.hide()
         cmd_layout = QHBoxLayout()
         self.set_instr_conf_from_button = QPushButton("Load instr conf from")
         self.set_instr_conf_from_button.setStyleSheet("background-color:rgb(205,178,102)")
@@ -219,18 +362,9 @@ class InstrTab(QWidget):
         if 'roi' in conf_map:
             self.roi.setText(str(conf_map['roi']).replace(" ", ""))
             self.roi.setStyleSheet('color: black')
-        if 'DetY' in conf_map:
-            DetY = str(conf_map['DetY']).replace(" ", "")
-            self.DetY.setText(DetY)
-        if 'DetX' in conf_map:
-            DetX = str(conf_map['DetX']).replace(" ", "")
-            self.DetX.setText(DetX)
-        if 'energy' in conf_map:
-            self.energy.setText(str(conf_map['energy']).replace(" ", ""))
-            self.energy.setStyleSheet('color: black')
-        if 'DetZ' in conf_map:
-            self.DetZ.setText(str(conf_map['DetZ']).replace(" ", ""))
-            self.DetZ.setStyleSheet('color: black')
+
+        if self.add_config:
+            self.extended.load_tab(conf_map)
 
         if self.main_win.is_exp_exists():
             self.save_conf()
@@ -288,6 +422,8 @@ class InstrTab(QWidget):
             self.data_dir_button.setText(data_dir)
         else:
             self.data_dir_button.setText('')
+        if self.add_config:
+            self.extended.parse_metadata()
 
 
     def clear_conf(self):
@@ -298,10 +434,8 @@ class InstrTab(QWidget):
         self.Imult.setText('')
         self.detector.setText('')
         self.roi.setText('')
-        self.DetY.setText('')
-        self.DetX.setText('')
-        self.energy.setText('')
-        self.DetZ.setText('')
+        if self.add_config:
+            self.extended.clear_conf()
 
 
     def load_instr_conf(self):
@@ -349,14 +483,9 @@ class InstrTab(QWidget):
             conf_map['detector'] = str(self.detector.text())
         if len(self.roi.text()) > 0:
             conf_map['roi'] = ast.literal_eval(str(self.roi.text()).replace(os.linesep,''))
-        if len(self.DetY.text()) > 0:
-            conf_map['DetY'] = ast.literal_eval(str(self.DetY.text()))
-        if len(self.DetX.text()) > 0:
-            conf_map['DetX'] = ast.literal_eval(str(self.DetX.text()))
-        if len(self.energy.text()) > 0:
-            conf_map['energy'] = ast.literal_eval(str(self.energy.text()))
-        if len(self.DetZ.text()) > 0:
-            conf_map['DetZ'] = ast.literal_eval(str(self.DetZ.text()))
+
+        if self.add_config:
+            conf_map.update(self.extended.get_instr_config())
 
         return conf_map
 
