@@ -48,15 +48,27 @@ class Diffractometer_20ide(Diffractometer):
     incidentaxis = (0, 0, 1)
     sampleaxes_name = ('LabMotion',)
     sampleaxes_mne = ('samRy',)
-    detectoraxes_name = ('DetX', 'DetY')
-    detectoraxes_mne = ('DetX', 'DetY')
-    detectordist_name = 'camdist'
+    detectoraxes_name = ('DetZ', 'DetX', 'DetY')
+    detectoraxes_mne = ('DetZ', 'DetX', 'DetY')
+    detectordist_name = 'DetZ'
     detectordist_mne = 'DetZ'
 
 
     def __init__(self, params):
         super(Diffractometer_20ide, self).__init__('20ide')
         self.data_dir = params.get('data_dir', None)
+
+
+    def convert_units(self, params):
+        """
+        Converts detectoraxes values from mm to m. The values are stored in params dict.
+        :return:
+        """
+
+        for ax in self.detectoraxes_mne:
+            params[ax] = params[ax] / 1000
+        return params
+
 
     def parse_metadata(self, scan):
         """
@@ -81,8 +93,8 @@ class Diffractometer_20ide(Diffractometer):
 
         # find the file by scan number
         for scanfile in sorted(os.listdir(self.data_dir)):
-            scanfile_full = ut.join(self.data_dir, scanfile)
-            if not os.path.isfile(scanfile_full) or not scanfile_full.endswith('.h5'):
+            scanfile_full_path = ut.join(self.data_dir, scanfile)
+            if not os.path.isfile(scanfile_full_path) or not scanfile_full_path.endswith('.h5'):
                 continue
             # chop off the ".h5" and get the scan number
             try:
@@ -90,7 +102,7 @@ class Diffractometer_20ide(Diffractometer):
             except:
                 continue
             if read_scan == scan:
-                h5file = scanfile_full
+                h5file = scanfile_full_path
                 break
 
         h5f = h5py.File(h5file)
@@ -102,13 +114,14 @@ class Diffractometer_20ide(Diffractometer):
             pass
         for mot_mne in self.detectoraxes_mne:
             try:
-                h5_dict[mot_mne] = h5f[f'DMS/{mot_mne}'][0] / 1000  # convert to meters
+                h5_dict[mot_mne] = h5f[f'DMS/{mot_mne}'][0]
             except:
                 pass
-        try:
-            h5_dict[self.detectordist_mne] = h5f[f'DMS/{self.detectordist_mne}'][0] / 1000  # convert to meters
-        except:
-            pass
+        # detectordist_mne is the same as detectoraxes_mne[0]
+        # try:
+        #     h5_dict[self.detectordist_mne] = h5f[f'DMS/{self.detectordist_name}'][0]
+        # except:
+        #     pass
         try:
             h5_dict['energy'] = h5f['HEM/Energy'][0]
         except Exception as ex:
@@ -156,14 +169,15 @@ class Diffractometer_20ide(Diffractometer):
         params.update(self.parse_metadata(scan))
         # override with config params
         params.update(conf_params)
+        # exception is raised if missing parameter
         self.check_params(params)
+        params = self.convert_units(params)
 
         binning = params.get('binning', [1, 1, 1])
         pixel = det.get_pixel(params['detector'])
         px = pixel[0] * binning[0]
         py = pixel[1] * binning[1]
 
-        DetZ = params['DetZ']
         scanmot = params['scanmot']
         enfix = 1
         # if energy is given in kev convert to ev for xrayutilities
@@ -178,7 +192,7 @@ class Diffractometer_20ide(Diffractometer):
         # compute for 4pixel (2x2) detector
         pixelorientation = det.get_pixel_orientation(params['detector'])
         qc.init_area(pixelorientation[0], pixelorientation[1], shape[0], shape[1], 2, 2,
-                     distance=DetZ, pwidth1=px, pwidth2=py)
+                     distance=params[self.detectordist_mne], pwidth1=px, pwidth2=py)
 
         if scanmot in self.sampleaxes_mne:  # based on scanmot args are made for qc.area
             args = []
@@ -225,7 +239,6 @@ class Diffractometer_20ide(Diffractometer):
         args = []
         for axis in self.detectoraxes_mne:
             args.append(params[axis])
-        args.append(wl)
 
         kf = qc.getDetectorPos(*args, deg=True)  # return in meters.  Not K as docs say.
         kf_hat = kf / np.linalg.norm(kf)
