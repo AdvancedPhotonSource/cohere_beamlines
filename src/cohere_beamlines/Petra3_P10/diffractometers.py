@@ -7,34 +7,8 @@
 import os.path
 import cohere_core.utilities as ut
 import numpy as np
-import math as m
-import xrayutilities.experiment as xuexp
-import xrayutilities.utilities_noconf as xutilnoconf
-import cohere_beamlines.Petra3_P10.detectors as det
+from cohere_beamlines.beam_diffractometers.common_diff import Diffractometer
 import cohere_beamlines.Petra3_P10.p10_scan_reader as p10sr
-
-
-class Diffractometer():
-    """
-    Parent class representing diffractometer. It keeps fields related to the specific diffractometer represented by
-    a subclass.
-
-    diff_name : str
-        diffractometer name
-    """
-    name = None
-
-    def __init__(self, diff_name):
-        """
-        Constructor.
-
-        Parameters
-        ----------
-        diff_name : str
-            diffractometer name
-
-        """
-        self.name = diff_name
 
 
 class Diffractometer_P10sixc(Diffractometer):
@@ -49,15 +23,27 @@ class Diffractometer_P10sixc(Diffractometer):
     sampleaxes_mne = ('mu', 'om', 'chi', 'phi')
     detectoraxes_name = ('Gamma', 'Delta')
     detectoraxes_mne = ('gam','del')
+    detectordist_name = '_distance'
+    detectordist_mne = 'detdist'
 
     def __init__(self, params):
-        super(Diffractometer_P10sixc, self).__init__(self.name)
+        super(Diffractometer_P10sixc, self).__init__()
         self.data_dir = params['data_dir']
         self.sample = params['sample']
 
 
+    def convert_units(self, params):
+        """
+        Converts detectordist value from mm to m.
+        :return:
+        """
+
+        params[self.detectordist_mne] = params[self.detectordist_mne] / 1000.0  # convert to meters
+        return params
+
+
     #Here the fiofile is the P10 fio object.  So no need to read a file.
-    def parse_fio(self, scan):
+    def parse_metadata(self, scan):
         """
         Reads parameters from fio file for given scan. The fio file is derived from data_dir sample and scan.
         :param data_dir: directory where data along with fio file are saved
@@ -84,7 +70,7 @@ class Diffractometer_P10sixc(Diffractometer):
                                      self.sampleaxes_name + self.detectoraxes_name):
             fio_dict[mot_mne] = scanmeta.get_motor_pos(mot_mne)
 
-        fio_dict['detdist'] = scanmeta.get_motor_pos('_distance')
+        fio_dict[self.detectordist_mne] = scanmeta.get_motor_pos(self.detectordist_name)
 
 
         fio_dict['energy'] = scanmeta.get_motor_pos('fmbenergy')
@@ -95,144 +81,6 @@ class Diffractometer_P10sixc(Diffractometer):
             print(str(ex))
 
         return fio_dict
-
-
-    def check_params(self, params):
-        if 'detector' not in params:
-            print('detector name not parsed from spec file and not configured')
-            raise KeyError('detector name not parsed from spec file and not configured')
-        if 'detdist' not in params:
-            print('detdist not parsed from spec file and not configured')
-            raise KeyError('detdist not parsed from spec file and not configured')
-        if 'scanmot' not in params:
-            print('scanmot not parsed from spec file and not configured')
-            raise KeyError('scanmot not parsed from spec file and not configured')
-        if 'energy' not in params:
-            print('energy not parsed from spec file and not configured')
-            raise KeyError('energy not parsed from spec file and not configured')
-        if 'scanmot_del' not in params:
-            print('scanmot_del not parsed from spec file and not configured')
-            raise KeyError('scanmot_del not parsed from spec file and not configured')
-        for ax in self.sampleaxes_mne:
-            if ax not in params:
-                print(f'{ax} not parsed from spec file and not configured')
-                raise KeyError (f'{ax} not parsed from spec file and not configured')
-        for ax in self.detectoraxes_mne:
-            if ax not in params:
-                print(f'{ax} not parsed from spec file and not configured')
-                raise KeyError (f'{ax} not parsed from spec file and not configured')
-
-
-    def get_geometry(self, shape, scan, conf_params):
-        """
-        Calculates geometry based on diffractometer's and detector's attributes and experiment parameters.
-
-        For the Petra3_P10 scanmot, scanmot_del, detdist, detector_name, energy values are parsed from fio file.
-        They can be overridden by configuration.
-
-        Parameters
-        ----------
-        shape : tuple
-            shape of reconstructed array
-        scan : int
-            scan number the geometry is calculated for
-        conf_params : reflect configuration, and could contain del, gam, theta, phi, chi, scanmot, scanmot_del,
-        detdist, detector_name, energy.
-
-        Returns
-        -------
-        tuple
-            (Trecip, Tdir)
-        """
-        params = {}
-        # parse fiofile
-        if scan is not None:
-            params.update(self.parse_fio(scan))
-        # override with config params
-        params.update(conf_params)
-
-        binning = params.get('binning', [1, 1, 1])
-        pixel = det.get_pixel(params['detector'])
-        px = pixel[0] * binning[0]
-        py = pixel[1] * binning[1]
-
-        detdist = params.get('detdist') / 1000.0  # convert to meters
-        scanmot = params.get('scanmot').strip()
-        enfix = 1
-        # if energy is given in kev convert to ev for xrayutilities
-        energy = params['energy']
-        if m.floor(m.log10(energy)) < 3:
-            enfix = 1000
-        energy = energy * enfix  # x-ray energy in eV
-
-        if scanmot == 'en':
-            scanen = np.array((energy, energy + params['scanmot_del'] * enfix))
-        else:
-            scanen = np.array((energy,))
-        qc = xuexp.QConversion(self.sampleaxes, self.detectoraxes, self.incidentaxis, en=scanen)
-
-        # compute for 4pixel (2x2) detector
-        pixelorientation = det.get_pixel_orientation(params['detector'])
-        qc.init_area(pixelorientation[0], pixelorientation[1], shape[0], shape[1], 2, 2,
-                     distance=detdist, pwidth1=px, pwidth2=py)
-
-        if scanmot == 'en':  # seems en scans always have to be treated differently since init is unique
-            q2 = np.array(qc.area(params['mu'], params['om'], params['chi'], params['phi'], params['del'],
-            params['gam'], deg=True))
-        elif scanmot in self.sampleaxes_mne:  # based on scanmot args are made for qc.area
-            args = []
-            for sampleax in self.sampleaxes_mne:
-                if scanmot == sampleax:
-                    scanstart = params[scanmot]
-                    args.append(np.array((scanstart, scanstart + params['scanmot_del'] * binning[2])))
-                else:
-                    args.append(params[sampleax])
-            for axis in self.detectoraxes_mne:
-                args.append(params[axis])
-
-            q2 = np.array(qc.area(*args, deg=True))
-        else:
-            print("scanmot not in sample axes or energy, exiting")
-            raise RuntimeError
-
-        Astar = q2[:, 0, 1, 0] - q2[:, 0, 0, 0]
-        Bstar = q2[:, 0, 0, 1] - q2[:, 0, 0, 0]
-        Cstar = q2[:, 1, 0, 0] - q2[:, 0, 0, 0]
-
-        # transform to lab coords from sample reference frame
-        Astar = qc.transformSample2Lab(Astar, params['mu'], params['om'], params['chi'], params['phi']) * 10.0  # convert to inverse nm.
-        Bstar = qc.transformSample2Lab(Bstar, params['mu'], params['om'], params['chi'], params['phi']) * 10.0
-        Cstar = qc.transformSample2Lab(Cstar, params['mu'], params['om'], params['chi'], params['phi']) * 10.0
-
-        denom = np.dot(Astar, np.cross(Bstar, Cstar))
-        A = 2 * m.pi * np.cross(Bstar, Cstar) / denom
-        B = 2 * m.pi * np.cross(Cstar, Astar) / denom
-        C = 2 * m.pi * np.cross(Astar, Bstar) / denom
-
-        Trecip = np.zeros(9)
-        Trecip.shape = (3, 3)
-        Trecip[:, 0] = Astar
-        Trecip[:, 1] = Bstar
-        Trecip[:, 2] = Cstar
-
-        Tdir = np.zeros(9)
-        Tdir.shape = (3, 3)
-        Tdir = np.array((A, B, C)).transpose()
-
-        wl = xutilnoconf.en2lam(energy)
-        args = []
-        for axis in self.detectoraxes_mne:
-            args.append(params[axis])
-
-        kf = qc.getDetectorPos(*args, deg=True) #return in meters.  Not K as docs say.
-        kf_hat = kf / np.linalg.norm(kf)
-        ki = self.incidentaxis
-        ki_hat = ki / np.linalg.norm(ki)
-        ki = 2 * np.pi / wl * ki_hat
-        kf = 2 * np.pi / wl * kf_hat
-        myq = kf - ki
-
-        return (Trecip, Tdir, myq, ki, kf)
 
 
     @staticmethod
@@ -257,14 +105,14 @@ class Diffractometer_P10sixc(Diffractometer):
 
 
 def create_diffractometer(diff_name, params):
-    for diff in Diffractometer.__subclasses__():
-        if diff.name == diff_name:
-            return diff(params)
+    if Diffractometer_P10sixc.name == diff_name:
+        return Diffractometer_P10sixc(params)
     msg = f'diffractometor {diff_name} not defined'
     raise ValueError(msg)
 
 
-diffs = {'P10sixc' : Diffractometer_P10sixc}
-
 def check_mandatory_params(diff_name, params):
-    return diffs[diff_name].check_mandatory_params(params)
+    if Diffractometer_P10sixc.name == diff_name:
+        return Diffractometer_P10sixc.check_mandatory_params(params)
+    msg = f'diffractometor {diff_name} not defined'
+    raise ValueError(msg)

@@ -5,35 +5,11 @@
 # #########################################################################
 
 import numpy as np
+from xrayutilities.io import spec as spec
 import math as m
 import xrayutilities.experiment as xuexp
-from xrayutilities.io import spec as spec
 import xrayutilities.utilities_noconf as xutilnoconf
-import cohere_beamlines.aps_1ide.detectors as det
-from abc import ABC
-
-
-class Diffractometer(ABC):
-    """
-    Abstract class representing diffractometer. It keeps fields related to the specific diffractometer represented by
-    a subclass.
-
-    diff_name : str
-        diffractometer name
-    """
-    name = None
-
-    def __init__(self, diff_name):
-        """
-        Constructor.
-
-        Parameters
-        ----------
-        diff_name : str
-            diffractometer name
-
-        """
-        self.name = diff_name
+from cohere_beamlines.beam_diffractometers.common_diff import Diffractometer
 
 
 class Diffractometer_1ide(Diffractometer):
@@ -52,8 +28,18 @@ class Diffractometer_1ide(Diffractometer):
     #det dist will be in the config file.  Combination of dist to eta and x95 offset to back.
 
     def __init__(self, params):
-        super(Diffractometer_1ide, self).__init__('1ide')
+        super(Diffractometer_1ide, self).__init__()
         self.specfile = params.get('specfile', None)
+
+
+    def convert_units(self, params):
+        """
+        Converts detectoraxes values from mm to m. The values are stored in params dict.
+        :return:
+        """
+
+        params[self.detectordist_mne] = params[self.detectordist_mne] / 1000.0  # convert to meters
+        return params
 
 
     def parse_spec(self, scan):
@@ -139,7 +125,7 @@ class Diffractometer_1ide(Diffractometer):
                 raise KeyError (f'{ax}_offset not configured')
 
 
-    def get_geometry(self, shape, scan, conf_params):
+    def get_geometry(self, shape, scan, conf_params, det):
         """
         Calculates geometry based on diffractometer and detector attributes and experiment parameters.
 
@@ -242,8 +228,7 @@ class Diffractometer_1ide(Diffractometer):
 
 
 def create_diffractometer(diff_name, params):
-    for diff in Diffractometer.__subclasses__():
-        if diff.name == diff_name:
-            return diff(params)
+    if Diffractometer_1ide.name == diff_name:
+        return Diffractometer_1ide(params)
     msg = f'diffractometor {diff_name} not defined'
     raise ValueError(msg)

@@ -5,38 +5,8 @@
 # #########################################################################
 
 import numpy as np
-import math as m
-import xrayutilities.experiment as xuexp
-import xrayutilities.utilities_noconf as xutilnoconf
 import h5py
-import cohere_beamlines.esrf_id01.detectors as det
-from abc import ABC, abstractmethod
-
-
-class Diffractometer(ABC):
-
-    """
-    class Diffractometer(self, diff_name)
-    ============================================
-
-    Abstract class representing diffractometer. It keeps fields related to the specific diffractometer represented by a subclass.
-        diff_name : str
-            diffractometer name
-
-    """
-    name = None
-
-    def __init__(self, diff_name):
-        """
-        Constructor.
-
-        Parameters
-        ----------
-        diff_name : str
-            diffractometer name
-
-        """
-        self.name = diff_name
+from cohere_beamlines.beam_diffractometers.common_diff import Diffractometer
 
 
 class Diffractometer_id01(Diffractometer):
@@ -55,11 +25,13 @@ class Diffractometer_id01(Diffractometer):
     detectordist_mne = 'detdist'
 
 
-    def __init__(self):
-        super(Diffractometer_id01, self).__init__('id01')
+    def __init__(self, params):
+        super(Diffractometer_id01, self).__init__()
+        self.h5 = params.get('h5file', None)
+        self.detector = params.get('detector', None)
 
 
-    def parse_h5(self, h5file, scan, detector):
+    def parse_metadata(self, scan):
         """
         Reads parameters from h5 file for given scan.
 
@@ -81,22 +53,24 @@ class Diffractometer_id01(Diffractometer):
         h5_dict = {}
 
         # Scan numbers start at one but the list is 0 indexed
-        h5f = h5py.File(h5file)
+        h5f = h5py.File(self.h5)
         info = h5f[f"{scan}.1"]
 
         try:
-            h5_dict['detector'] = detector
+            h5_dict['detector'] = self.detector
             command = info['title'].asstr()[()].split(" ")
             if command[0] in ("ascan", "a2scan", "a3scan"):
                 h5_dict['scanmot'] = command[1]
                 h5_dict['scanmot_del'] = (float(command[3]) - float(command[2])) / int(command[4])
             else:
                 raise IOError(f"{__name__}: Unknown scan type: {command[0]}")
-
             for mot_mne in self.sampleaxes_mne + self.detectoraxes_mne:
-                h5_dict[mot_mne] = info[f'instrument/positioners/{mot_mne}'][()]
+                if mot_mne != h5_dict['scanmot']:
+                    h5_dict[mot_mne] = info[f'instrument/positioners/{mot_mne}'][()]
+                else:
+                    h5_dict[mot_mne] = info[f'instrument/positioners/{mot_mne}'][()][0]
 
-            h5_dict['detdist'] = info[f'instrument/{detector}/{self.detectordist_name}'][()]
+            h5_dict[self.detectordist_mne] = info[f'instrument/{self.detector}/{self.detectordist_name}'][()]
 
             h5_dict['energy'] = info['instrument/monochromator/Energy'][()]
         except Exception as ex:
@@ -107,112 +81,8 @@ class Diffractometer_id01(Diffractometer):
         return h5_dict
 
 
-    def get_geometry(self, shape, scan, conf_params):
-        """
-        Calculates geometry for given scan based on diffractometer's attributes and experiment parameters.
-        :param shape: shape of the array
-        :param scan: scan
-        :param conf_params: Parameters reflecting configuration
-        :return: tuple, geometry in reciprocal, geometry in direct space
-        """
-        params = self.parse_h5(conf_params['h5file'], scan, conf_params['detector'])
-        params.update(conf_params)
-
-        binning = params.get('binning', [1, 1, 1])
-        pixel = det.get_pixel(params['detector'])
-        px = pixel[0] * binning[0]
-        py = pixel[1] * binning[1]
-
-        detdist = params.get('detdist')
-        scanmot = params.get('scanmot').strip()
-        enfix = 1
-        # if energy is given in kev convert to ev for xrayutilities
-        energy = params['energy']
-        if m.floor(m.log10(energy)) < 3:
-            enfix = 1000
-        energy = energy * enfix  # x-ray energy in eV
-
-        if scanmot == 'en':
-            scanen = np.array((energy, energy + params.get('scanmot_del') * enfix))
-        else:
-            scanen = np.array((energy,))
-        qc = xuexp.QConversion(self.sampleaxes, self.detectoraxes, self.incidentaxis, en=scanen)
-
-        # compute for 4pixel (2x2) detector
-        pixelorientation = det.get_pixel_orientation(params['detector'])
-        qc.init_area(pixelorientation[0], pixelorientation[1], shape[0], shape[1], 2, 2,
-                     distance=detdist, pwidth1=px, pwidth2=py)
-
-        if scanmot == 'en':  # seems en scans always have to be treated differently since init is unique
-            q2 = np.array(qc.area(params.get('mu'), params.get('eta'), params.get('phi'),
-                                  params.get('nu'), params.get('delta'), deg=False))
-        elif scanmot in self.sampleaxes_mne:  # based on scanmot args are made for qc.area
-            args = []
-            for sampleax in self.sampleaxes_mne:
-                if scanmot == sampleax:
-                    scaninfo = params[scanmot]
-                    # checking type, in 34-idc the 'th' type is float and it is the scanstart.
-                    # array is built by adding scanmot_del for each step.
-                    # for the esrf the 'eta' is an array, so in the 'else' clouse no need to build the array.
-                    # adding hack to change the 'eta' attribute from array to the float - first element (scanstart)
-                    if type(scaninfo) == float:
-                        scanstart = params[scanmot]
-                        args.append(np.array((scanstart, scanstart + params.get('scanmot_del') * binning[2])))
-                    else:
-                        args.append(scaninfo[::binning[2]])
-                        params[scanmot] = params[scanmot][0]
-                else:
-                    args.append(params[sampleax])
-            for axis in self.detectoraxes_mne:
-                args.append(params[axis])
-            q2 = np.array(qc.area(*args, deg=True))
-        else:
-            print(f"{__name__}: scanmot not in sample axes or energy, exiting")
-            raise RuntimeError
-
-        Astar = q2[:, 0, 1, 0] - q2[:, 0, 0, 0]
-        Bstar = q2[:, 0, 0, 1] - q2[:, 0, 0, 0]
-        Cstar = q2[:, 1, 0, 0] - q2[:, 0, 0, 0]
-
-        # transform to lab coords from sample reference frame
-        Astar = qc.transformSample2Lab(Astar, params['mu'], params['eta'], params['phi']) * 10.0  # convert to inverse nm.
-        Bstar = qc.transformSample2Lab(Bstar, params['mu'], params['eta'], params['phi']) * 10.0
-        Cstar = qc.transformSample2Lab(Cstar, params['mu'], params['eta'], params['phi']) * 10.0
-
-        denom = np.dot(Astar, np.cross(Bstar, Cstar))
-        A = 2 * m.pi * np.cross(Bstar, Cstar) / denom
-        B = 2 * m.pi * np.cross(Cstar, Astar) / denom
-        C = 2 * m.pi * np.cross(Astar, Bstar) / denom
-
-        Trecip = np.zeros(9)
-        Trecip.shape = (3, 3)
-        Trecip[:, 0] = Astar
-        Trecip[:, 1] = Bstar
-        Trecip[:, 2] = Cstar
-
-        Tdir = np.zeros(9)
-        Tdir.shape = (3, 3)
-        Tdir = np.array((A, B, C)).transpose()
-
-        wl = xutilnoconf.en2lam(energy)
-        args = []
-        for axis in self.detectoraxes_mne:
-            args.append(params[axis])
-
-        kf = qc.getDetectorPos(*args, deg=True) #return in meters.  Not K as docs say.
-        kf_hat = kf / np.linalg.norm(kf)
-        ki = self.incidentaxis
-        ki_hat = ki / np.linalg.norm(ki)
-        ki = 2 * np.pi / wl * ki_hat
-        kf = 2 * np.pi / wl * kf_hat
-        myq = kf - ki
-
-        return (Trecip, Tdir, myq, ki, kf)
-
-
-def create_diffractometer(diff_name):
-    for diff in Diffractometer.__subclasses__():
-        if diff.name == diff_name:
-            return diff()
+def create_diffractometer(diff_name, params):
+    if Diffractometer_id01.name == diff_name:
+        return Diffractometer_id01(params)
     msg = f'diffractometor {diff_name} not defined'
     raise ValueError(msg)

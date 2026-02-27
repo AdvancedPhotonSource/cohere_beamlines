@@ -72,7 +72,7 @@ class Instrument:
         # get needed parameters into one flat dict
         conf_params = conf_maps['config_instr']
         conf_params['binning'] = conf_maps['config_data'].get('binning', [1,1,1])
-        return self.diff_obj.get_geometry(shape, scan, conf_params)
+        return self.diff_obj.get_geometry(shape, scan, conf_params, det)
 
 
 def create_instr(configs, **kwargs):
@@ -101,17 +101,17 @@ def create_instr(configs, **kwargs):
         msg = f"h5file {h5file} does not exist"
         raise ValueError(msg)
 
-    diffractometer = config_params.get('diffractometer', None)
-    if diffractometer is None:
-        msg = 'diffractometer must be provided to create Instrument for esrf_id01 beamline'
-        raise ValueError(msg)
-
     detector = config_params.get('detector', None)
     if detector is None:
         msg = 'detector must be provided to create Instrument for esrf_id01 beamline'
         raise ValueError(msg)
 
-    diff_obj = diff.create_diffractometer(diffractometer)
+    diffractometer = config_params.get('diffractometer', None)
+    if diffractometer is None:
+        msg = 'diffractometer must be provided to create Instrument for esrf_id01 beamline'
+        raise ValueError(msg)
+
+    diff_obj = diff.create_diffractometer(diffractometer, config_params)
 
     if 'need_detector' in kwargs:
         if 'config_prep' in configs:

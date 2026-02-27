@@ -52,7 +52,8 @@ class aps20Detector(Detector):
                 continue
             # chop off the ".h5" and get the scan number
             try:
-                scan = int(scanfile[:-3].split('_')[-1])
+                # scan = int(scanfile[:-3].split('_')[-1])
+                scan = int(scanfile.split('.')[0].split('_')[-1])
             except:
                 continue
             if scan < first_scan:

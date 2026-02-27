@@ -264,10 +264,6 @@ class SubInstrTab():
             msg_window ('cannot parse fio, diffractometer not defined')
             return
 
-        if diffractometer not in diff.diffs.keys():
-            msg_window (f'diffractometer {diffractometer} not defined')
-            return
-
         data_dir = self.instr_tab.data_dir_button.text()
         if len(data_dir) == 0:
             msg_window ('data_dir not defined')
@@ -286,7 +282,7 @@ class SubInstrTab():
             return
 
         last_scan = int(scan.split('-')[-1].split(',')[-1])
-        fio_dict = diff_obj.parse_fio(last_scan)
+        fio_dict = diff_obj.parse_metadata(last_scan)
         if fio_dict is None:
             return
         if 'energy' in fio_dict:

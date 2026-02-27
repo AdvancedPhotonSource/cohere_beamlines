@@ -6,36 +6,9 @@
 import os
 import numpy as np
 import h5py
-import math as m
-import xrayutilities.experiment as xuexp
-from xrayutilities.io import spec as spec
-import xrayutilities.utilities_noconf as xutilnoconf
-import cohere_beamlines.aps_20ide.detectors as det
+import numpy as np
+from cohere_beamlines.beam_diffractometers.common_diff import Diffractometer
 import cohere_core.utilities as ut
-from abc import ABC
-
-
-class Diffractometer(ABC):
-    """
-    Abstract class representing diffractometer. It keeps fields related to the specific diffractometer represented by
-    a subclass.
-
-    diff_name : str
-        diffractometer name
-    """
-    name = None
-
-    def __init__(self, diff_name):
-        """
-        Constructor.
-
-        Parameters
-        ----------
-        diff_name : str
-            diffractometer name
-
-        """
-        self.name = diff_name
 
 
 class Diffractometer_20ide(Diffractometer):
@@ -55,7 +28,7 @@ class Diffractometer_20ide(Diffractometer):
 
 
     def __init__(self, params):
-        super(Diffractometer_20ide, self).__init__('20ide')
+        super(Diffractometer_20ide, self).__init__()
         self.data_dir = params.get('data_dir', None)
 
 
@@ -98,7 +71,9 @@ class Diffractometer_20ide(Diffractometer):
                 continue
             # chop off the ".h5" and get the scan number
             try:
-                read_scan = int(scanfile[:-3].split('_')[-1])
+                # read_scan = int(scanfile[:-3].split('_')[-1])
+                # The format is xxx_ddd.detectorname.h5
+                read_scan = int(scanfile.split('.')[0].split('_')[-1])
             except:
                 continue
             if read_scan == scan:
@@ -109,7 +84,10 @@ class Diffractometer_20ide(Diffractometer):
         scanmot = self.sampleaxes_mne[0]
         h5_dict['scanmot'] = scanmot
         try:
-            h5_dict[scanmot] = h5f[f'SMS/E/HR/{scanmot}'][:]
+            scanmot_arr = h5f[f'SMS/E/HR/{scanmot}'][:]
+            # scanmot is an array
+            h5_dict[scanmot] = scanmot_arr[0]
+            h5_dict['scanmot_del'] = scanmot_arr[1] - scanmot_arr[0]
         except:
             pass
         for mot_mne in self.detectoraxes_mne:
@@ -131,130 +109,9 @@ class Diffractometer_20ide(Diffractometer):
         h5f.close()
         return h5_dict
 
-    def check_params(self, params):
-        if 'detector' not in params:
-            print('detector name not parsed from h5 file and not configured')
-            raise KeyError('detector name not parsed from h5 file and not configured')
-        if 'DetZ' not in params:
-            print('DetZ not parsed from h5 file and not configured')
-            raise KeyError('DetZ not parsed from h5 file and not configured')
-        if 'scanmot' not in params:
-            print('scanmot not parsed from h5 file and not configured')
-            raise KeyError('scanmot not parsed from h5 file and not configured')
-        if 'energy' not in params:
-            print('energy not parsed from h5 file and not configured')
-            raise KeyError('energy not parsed from h5 file and not configured')
-        for ax in self.sampleaxes_mne:
-            if ax not in params:
-                print(f'{ax} not parsed from h5 file and not configured')
-                raise KeyError (f'{ax} not parsed from h5 file and not configured')
-        for ax in self.detectoraxes_mne:
-            if ax not in params:
-                print(f'{ax} not parsed from h5 file and not configured')
-                raise KeyError (f'{ax} not parsed from h5 file and not configured')
-
-
-    def get_geometry(self, shape, scan, conf_params):
-        """
-        Calculates geometry based on diffractometer and detector attributes and experiment parameters.
-
-        :param shape: tuple, shape of array
-        :param scan: scan the geometry is calculated for
-        :param conf_params: reflect configuration
-        :return: tuple
-            (Trecip, Tdir)
-        """
-        params = {}
-        # parse h5 file for metadata
-        params.update(self.parse_metadata(scan))
-        # override with config params
-        params.update(conf_params)
-        # exception is raised if missing parameter
-        self.check_params(params)
-        params = self.convert_units(params)
-
-        binning = params.get('binning', [1, 1, 1])
-        pixel = det.get_pixel(params['detector'])
-        px = pixel[0] * binning[0]
-        py = pixel[1] * binning[1]
-
-        scanmot = params['scanmot']
-        enfix = 1
-        # if energy is given in kev convert to ev for xrayutilities
-        energy = params['energy']
-        if m.floor(m.log10(energy)) < 3:
-            enfix = 1000
-        energy = energy * enfix  # x-ray energy in eV
-        scanen = np.array((energy,))
-
-        qc = xuexp.QConversion(self.sampleaxes, self.detectoraxes, self.incidentaxis, en=scanen)
-
-        # compute for 4pixel (2x2) detector
-        pixelorientation = det.get_pixel_orientation(params['detector'])
-        qc.init_area(pixelorientation[0], pixelorientation[1], shape[0], shape[1], 2, 2,
-                     distance=params[self.detectordist_mne], pwidth1=px, pwidth2=py)
-
-        if scanmot in self.sampleaxes_mne:  # based on scanmot args are made for qc.area
-            args = []
-            for sampleax in self.sampleaxes_mne:
-                if scanmot == sampleax:
-                    step = params[scanmot][1] - params[scanmot][0]
-                    args.append((np.array((params[scanmot][0], params[scanmot][0] + step * binning[2]))))
-                else:
-                    args.append(params[sampleax])
-
-            args.append(params['DetZ'])
-            args.append(params['DetX'])
-            args.append(params['DetY'])
-
-            q2 = np.array(qc.area(*args, deg=True))
-
-        # I think q2 will always be (3,2,2,2) (vec, scanarr, px, py)
-        Astar = q2[:, 0, 1, 0] - q2[:, 0, 0, 0]
-        Bstar = q2[:, 0, 0, 1] - q2[:, 0, 0, 0]
-        Cstar = q2[:, 1, 0, 0] - q2[:, 0, 0, 0]
-
-        # transform to lab coords from sample reference frame
-        scanmot_start = params[scanmot][0]
-        Astar = qc.transformSample2Lab(Astar, scanmot_start) * 10.0  # convert to inverse nm.
-        Bstar = qc.transformSample2Lab(Bstar, scanmot_start) * 10.0
-        Cstar = qc.transformSample2Lab(Cstar, scanmot_start) * 10.0
-
-        denom = np.dot(Astar, np.cross(Bstar, Cstar))
-        A = 2 * m.pi * np.cross(Bstar, Cstar) / denom
-        B = 2 * m.pi * np.cross(Cstar, Astar) / denom
-        C = 2 * m.pi * np.cross(Astar, Bstar) / denom
-
-        Trecip = np.zeros(9)
-        Trecip.shape = (3, 3)
-        Trecip[:, 0] = Astar
-        Trecip[:, 1] = Bstar
-        Trecip[:, 2] = Cstar
-
-        Tdir = np.zeros(9)
-        Tdir.shape = (3, 3)
-        Tdir = np.array((A, B, C)).transpose()
-
-        wl = xutilnoconf.en2lam(energy)
-        args = []
-        for axis in self.detectoraxes_mne:
-            args.append(params[axis])
-
-        kf = qc.getDetectorPos(*args, deg=True)  # return in meters.  Not K as docs say.
-        kf_hat = kf / np.linalg.norm(kf)
-        ki = self.incidentaxis
-        ki_hat = ki / np.linalg.norm(ki)
-        ki = 2 * np.pi / wl * ki_hat
-        kf = 2 * np.pi / wl * kf_hat
-        myq = kf - ki
-
-        return (Trecip, Tdir, myq, ki, kf)
-
 
 def create_diffractometer(diff_name, params):
-    for diff in Diffractometer.__subclasses__():
-        if diff.name == diff_name:
-            return diff(params)
-
+    if Diffractometer_20ide.name == diff_name:
+        return Diffractometer_20ide(params)
     msg = f'diffractometor {diff_name} not defined'
     raise ValueError(msg)

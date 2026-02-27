@@ -70,7 +70,7 @@ class Instrument:
         # get needed parameters into one flat dict
         conf_params = conf_maps['config_instr']
         conf_params['binning'] = conf_maps['config_data'].get('binning', [1,1,1])
-        return self.diff_obj.get_geometry(shape, scan, conf_params)
+        return self.diff_obj.get_geometry(shape, scan, conf_params, det)
 
 
 def create_instr(configs, **kwargs):

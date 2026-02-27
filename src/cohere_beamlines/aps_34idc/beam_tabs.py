@@ -267,7 +267,7 @@ class SubInstrTab():
             return
 
         last_scan = int(scan.split('-')[-1].split(',')[-1])
-        spec_dict = diff_obj.parse_spec(last_scan)
+        spec_dict = diff_obj.parse_metadata(last_scan)
         if spec_dict is None:
             return
         if 'energy' in spec_dict:
