@@ -134,7 +134,7 @@ class SubInstrTab():
         -------
         nothing
         """
-        self.parse_spec()
+        self.parse_metadata()
 
         # if parameters are configured, override the readings from spec file
         if 'aero' in conf_map:
@@ -188,7 +188,7 @@ class SubInstrTab():
         return conf_map
 
 
-    def parse_spec(self):
+    def parse_metadata(self):
         """
         Calls utility function to parse spec file. Displas the parsed parameters in the window with blue text.
         Parameters
@@ -230,7 +230,7 @@ class SubInstrTab():
             return
 
         last_scan = int(scan.split('-')[-1].split(',')[-1])
-        spec_dict = diff_obj.parse_spec(last_scan)
+        spec_dict = diff_obj.parse_metadata(last_scan)
         if spec_dict is None:
             return
         # if 'energy' in spec_dict:
@@ -278,7 +278,7 @@ class InstrTab(QWidget):
         else:
             self.add_config = True
             self.extended.spec_widget.show()
-            self.extended.parse_spec()
+            self.extended.parse_metadata()
         if self.main_win.loaded:
             self.save_conf()
 
@@ -444,7 +444,7 @@ class InstrTab(QWidget):
             self.spec_file_button.setStyleSheet("Text-align:left")
             self.spec_file_button.setText(specfile)
             if self.add_config:
-                self.extended.parse_spec()
+                self.extended.parse_metadata()
         else:
             self.spec_file_button.setText('')
 

@@ -81,7 +81,6 @@ class petra10Detector(Detector):
                 with h5py.File(ut.join(data_dir, hfile), "r") as f:
                     data = np.array(f['entry/data/data'], dtype=float)
                     data = data[self.slice].T
-                    # data = data.T
                 break
         data = self.correct(data)
         

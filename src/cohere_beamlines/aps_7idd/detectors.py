@@ -104,12 +104,15 @@ class aps7Detector(Detector):
                 slices_files[key] = ut.join(scan_info, file_name)
 
         ordered_keys = sorted(list(slices_files.keys()))
-        ordered_slices = [self.correct_frame(slices_files[k]) for k in ordered_keys]
+        ordered_frames = [ut.read_tif(slices_files[key]) for key in ordered_keys]
+#        ordered_slices = [self.correct_frame(slices_files[k]) for k in ordered_keys]
 
-        data = np.stack(ordered_slices, axis=-1)
+        data = np.stack(ordered_frames, axis=-1)[self.slice]
 
         if self.user_roi is not None:
             data = self.get_user_roi_slice(data)
+
+        data = self.correct(data)
 
         if self.max_crop is not None:
             data = self.get_max_crop_slice(data)
@@ -128,7 +131,7 @@ class aps7Detector(Detector):
 
 
     @abstractmethod
-    def correct_frame(self, frame):
+    def correct(self, frame):
         """
         Applies the correction for detector.
 
@@ -143,9 +146,8 @@ class Detector_7iddrobot(aps7Detector):
     """
     name = "7iddrobot"
     roi = [0, 1062, 0, 1028]
-    # dims = (1062, 1028 )
     pixel = (75.0e-6, 75e-6)
-    pixelorientation = ('y+', 'x-')  # in xrayutilities notation
+    pixelorientation = ('y+', 'x+')  # in xrayutilities notation
     darkfield = None
     data_dir = None
     Imult = 1.0
@@ -155,14 +157,16 @@ class Detector_7iddrobot(aps7Detector):
         # The detector attributes for background/whitefield/etc need to be set to read frames
         # this will capture things like data directory, darkfield_filename, etc.
         self.data_dir = params.get('data_dir') # mandatory
-        if 'roi' in params:
-            self.roi = params.get('roi')
+        roi = params.get('roi', Detector_7iddrobot.roi)
+        # slices reflect transposed data
+        self.roi_slice = np.s_[roi[0]:roi[0] + roi[1], roi[2]:roi[2] + roi[3]]
+        self.slice = np.s_[roi[0]:roi[0] + roi[1], roi[2]:roi[2] + roi[3], :]
         if 'darkfield_filename' in params:
-            self.darkfield = ut.read_tif(params.get('darkfield_filename'))
+            self.darkfield = ut.read_tif(params.get('darkfield_filename'))[self.roi_slice]
 
 
     # TIM1 only needs bad pixels deleted.  Even that is optional.
-    def correct_frame(self, filename):
+    def correct(self, data):
         """
         Reads raw frame from a file, and applies correction for 34idcTIM1 detector, i.e. darkfield.
         Parameters
@@ -174,15 +178,14 @@ class Detector_7iddrobot(aps7Detector):
         frame : ndarray
             frame after correction
         """
-        roislice1 = slice(self.roi[0], self.roi[0] + self.roi[1])
-        roislice2 = slice(self.roi[2], self.roi[2] + self.roi[3])
-
-        frame = ut.read_tif(filename)
-
         if self.darkfield is not None:
-            frame = np.where(self.darkfield[roislice1, roislice2] > 1, 0.0, frame)
+            if len(self.darkfield.shape) == 2:
+                cor = self.darkfield[:,:,np.newaxis]
+            else:
+                cor = self.darkfield
+            data = data * cor
 
-        return frame
+        return data
 
 
     @staticmethod

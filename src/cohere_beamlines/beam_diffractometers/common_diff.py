@@ -13,9 +13,6 @@ class Diffractometer(ABC):
     diff_name : str
         diffractometer name
     """
-
-
-
     def convert_units(self, params):
         """
         Converts detectoraxes values from mm to m. The values are stored in params dict.
