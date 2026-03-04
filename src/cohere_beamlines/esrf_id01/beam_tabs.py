@@ -118,8 +118,6 @@ class InstrTab(QWidget):
         gen_layout.addRow("diffractometer", self.diffractometer)
         self.h5file_button = QPushButton()
         gen_layout.addRow("h5file file", self.h5file_button)
-        self.roi = QLineEdit()
-        gen_layout.addRow("detector area (roi)", self.roi)
         tab_layout.addLayout(gen_layout)
         cmd_layout = QHBoxLayout()
         self.set_instr_conf_from_button = QPushButton("Load instr conf from")
@@ -167,9 +165,6 @@ class InstrTab(QWidget):
                 self.h5file_button.setText(h5file)
             else:
                 msg_window(f'The h5file file {h5file} in config file does not exist')
-        if 'roi' in conf_map:
-            self.roi.setText(str(conf_map['roi']).replace(" ", ""))
-            self.roi.setStyleSheet('color: black')
 
 
     def set_h5file(self):
@@ -197,7 +192,6 @@ class InstrTab(QWidget):
         self.detector_button.setText('')
         self.diffractometer.setText('')
         self.h5file_button.setText('')
-        self.roi.setText('')
 
 
     def load_instr_conf(self):
@@ -237,8 +231,6 @@ class InstrTab(QWidget):
             conf_map['diffractometer'] = str(self.diffractometer.text())
         if len(self.h5file_button.text()) > 0:
             conf_map['h5file'] = str(self.h5file_button.text())
-        if len(self.roi.text()) > 0:
-            conf_map['roi'] = ast.literal_eval(str(self.roi.text()).replace(os.linesep,''))
 
         return conf_map
 

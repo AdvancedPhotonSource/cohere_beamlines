@@ -101,13 +101,12 @@ class aps20Detector(Detector):
         h5file = scan_info
         with h5py.File(h5file, "r") as h5f:
             arr = h5f['exchange/data'][:].T
-            arr = arr[self.slice]
             if self.whitefield is None:
                 # the whitefield was not configured, try to read it from h5 file
                 try:
                     whitefield = h5f['exchange/data_white'][:].T
                     if np.sum(whitefield) > 0:
-                        self.whitefield = whitefield[self.roi_slice]
+                        self.whitefield = whitefield
                         # the code below is specific to ASI detector
                         self.wfavg = np.average(self.whitefield)
                         self.wfstd = np.std(self.whitefield)
@@ -121,7 +120,7 @@ class aps20Detector(Detector):
                 try:
                     darkfield = h5f['exchange/data_dark'][:].T
                     if np.sum(whitefield) > 0:
-                        self.darkfield = darkfield[self.roi_slice]
+                        self.darkfield = darkfield
                         self.darkfield = np.where(self.darkfield > 0, 0.0, 1.0)
                         if self.whitefield is not None:
                                 self.whitefield = self.darkfield * self.whitefield  # kill known bad pixel
@@ -152,7 +151,7 @@ class ASI(aps20Detector):
     Subclass of Detector. Encapsulates any detector. Values are based on "34idcTIM2" detector.
     """
     name = "ASI"
-    roi = (0, 512, 0, 512)
+    #dims = (512, 512)
     pixel = (55.0e-6, 55e-6)
     pixelorientation = ('x+', 'y-')  # in xrayutilities notation
     whitefield = None
@@ -164,18 +163,14 @@ class ASI(aps20Detector):
     def __init__(self, params):
         super(ASI, self).__init__(params)
         # The detector attributes specific for the detector.
-        # Can include data directory, whitefield_filename, roi, etc.
+        # Can include data directory, whitefield_filename, etc.
         # keep parameters that are relevant to the detector
         self.data_dir = params.get('data_dir')
-        roi = params.get('roi', ASI.roi)
-        # slices reflect transposed data
-        self.roi_slice = np.s_[roi[0]:roi[0] + roi[1], roi[2]:roi[2] + roi[3]]
-        self.slice = np.s_[roi[0]:roi[0] + roi[1], roi[2]:roi[2] + roi[3], :]
         self.Imult = params.get('Imult', ASI.Imult)
         # init darkfield and whitefield if given
         if 'whitefield_filename' in params:
             self.whitefield = ut.read_tif(params.get('whitefield_filename')).T
-            self.whitefield = self.whitefield[self.roi_slice]
+            self.whitefield = self.whitefield
             # the code below is specific to ASI detector
             self.wfavg = np.average(self.whitefield)
             self.wfstd = np.std(self.whitefield)
@@ -184,7 +179,7 @@ class ASI(aps20Detector):
 
         if 'darkfield_filename' in params:
             self.darkfield = ut.read_tif(params.get('darkfield_filename')).T
-            self.darkfield = self.darkfield[self.roi_slice]
+            self.darkfield = self.darkfield
             self.darkfield = np.where(self.darkfield > 0, 0.0, 1.0)
             if self.whitefield is not None:
                     self.whitefield = self.darkfield * self.whitefield  # kill known bad pixel
@@ -241,7 +236,7 @@ class BSE(aps20Detector):
     Subclass of Detector. Encapsulates any detector. Values are based on "34idcTIM2" detector.
     """
     name = "BSE"
-    roi = (0, 4096, 0, 4096)
+    #dims = (4096, 4096)
     pixel = (7.8e-6, 7.8e-6)
     pixelorientation = ('x-', 'y-')  # in xrayutilities notation
     whitefield = None
@@ -250,16 +245,12 @@ class BSE(aps20Detector):
     def __init__(self, params):
         super(BSE, self).__init__(params)
         # The detector attributes specific for the detector.
-        # Can include data directory, whitefield_filename, roi, etc.
+        # Can include data directory, whitefield_filename, etc.
         # keep parameters that are relevant to the detector
         self.data_dir = params.get('data_dir')
-        roi = params.get('roi', BSE.roi)
-        # slices reflect transposed data
-        self.roi_slice = np.s_[roi[0]:roi[0] + roi[1], roi[2]:roi[2] + roi[3]]
-        self.slice = np.s_[roi[0]:roi[0] + roi[1], roi[2]:roi[2] + roi[3], :]
         if 'darkfield_filename' in params:
             self.darkfield = ut.read_tif(params.get('darkfield_filename')).T
-            self.darkfield = self.darkfield[self.roi_slice]
+            self.darkfield = self.darkfield
             self.darkfield = np.where(self.darkfield > 0, 0.0, 1.0)
 
 

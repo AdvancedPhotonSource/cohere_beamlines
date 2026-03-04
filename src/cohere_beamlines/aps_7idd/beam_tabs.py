@@ -313,11 +313,6 @@ class SubInstrTab():
             self.detector.setText(str(spec_dict['detector']))
             self.detector.setStyleSheet('color: blue')
 
-        if 'roi' in spec_dict:
-            self.instr_tab.roi.setText(str(spec_dict['roi']))
-            self.instr_tab.roi.setStyleSheet('color: blue')
-
-
 
 class InstrTab(QWidget):
     def __init__(self, parent=None):
@@ -376,8 +371,6 @@ class InstrTab(QWidget):
         gen_layout.addRow("whitefield file", self.white_file_button)
         self.Imult = QLineEdit()
         gen_layout.addRow("Imult", self.Imult)
-        self.roi = QLineEdit()
-        gen_layout.addRow("detector area (roi)", self.roi)
         tab_layout.addLayout(gen_layout)
         tab_layout.addWidget(self.extended.spec_widget)
         if not self.add_config:
@@ -397,7 +390,6 @@ class InstrTab(QWidget):
         self.data_dir_button.clicked.connect(self.set_data_dir)
         self.dark_file_button.clicked.connect(self.set_dark_file)
         self.white_file_button.clicked.connect(self.set_white_file)
-        self.roi.textChanged.connect(lambda: set_overriden(self.roi))
         self.save_instr_conf.clicked.connect(self.save_conf)
         self.set_instr_conf_from_button.clicked.connect(self.load_instr_conf)
 
@@ -455,9 +447,6 @@ class InstrTab(QWidget):
             self.white_file_button.setText('')
         if 'Imult' in conf_map:
             self.Imult.setText(str(conf_map['Imult']).replace(" ", ""))
-        if 'roi' in conf_map:
-            self.roi.setText(str(conf_map['roi']).replace(" ", ""))
-            self.roi.setStyleSheet('color: black')
 
         if self.add_config:
             self.extended.load_tab(conf_map)
@@ -547,7 +536,6 @@ class InstrTab(QWidget):
         self.data_dir_button.setText('')
         self.dark_file_button.setText('')
         self.white_file_button.setText('')
-        self.roi.setText('')
         self.Imult.setText('')
         if self.add_config:
             self.extended.clear_conf()
@@ -596,8 +584,6 @@ class InstrTab(QWidget):
             conf_map['whitefield_filename'] = str(self.white_file_button.text().strip())
         if len(self.Imult.text()) > 0:
             conf_map['Imult'] = ast.literal_eval(str(self.Imult.text()).replace(os.linesep,''))
-        if len(self.roi.text()) > 0:
-            conf_map['roi'] = ast.literal_eval(str(self.roi.text()).replace(os.linesep,''))
 
         if self.add_config:
             conf_map.update(self.extended.get_instr_config())

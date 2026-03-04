@@ -286,8 +286,6 @@ class InstrTab(QWidget):
         gen_layout.addRow("Imult", self.Imult)
         self.detector = QLineEdit()
         gen_layout.addRow("detector", self.detector)
-        self.roi = QLineEdit()
-        gen_layout.addRow("detector area (roi)", self.roi)
         tab_layout.addLayout(gen_layout)
         tab_layout.addWidget(self.extended.meta_widget)
         if not self.add_config:
@@ -359,9 +357,6 @@ class InstrTab(QWidget):
         if 'detector' in conf_map:
             self.detector.setText(str(conf_map['detector']).replace(" ", ""))
             self.detector.setStyleSheet('color: black')
-        if 'roi' in conf_map:
-            self.roi.setText(str(conf_map['roi']).replace(" ", ""))
-            self.roi.setStyleSheet('color: black')
 
         if self.add_config:
             self.extended.load_tab(conf_map)
@@ -433,7 +428,6 @@ class InstrTab(QWidget):
         self.white_file_button.setText('')
         self.Imult.setText('')
         self.detector.setText('')
-        self.roi.setText('')
         if self.add_config:
             self.extended.clear_conf()
 
@@ -481,8 +475,6 @@ class InstrTab(QWidget):
             conf_map['Imult'] = ast.literal_eval(str(self.Imult.text()).replace(os.linesep,''))
         if len(self.detector.text()) > 0:
             conf_map['detector'] = str(self.detector.text())
-        if len(self.roi.text()) > 0:
-            conf_map['roi'] = ast.literal_eval(str(self.roi.text()).replace(os.linesep,''))
 
         if self.add_config:
             conf_map.update(self.extended.get_instr_config())

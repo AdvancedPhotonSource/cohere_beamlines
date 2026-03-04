@@ -7,7 +7,6 @@
 import numpy as np
 import h5py
 from cohere_beamlines.beam_detectors.common_det import Detector
-from abc import abstractmethod
 from cohere_core import data
 
 
@@ -54,18 +53,11 @@ class esrf1Detector(Detector):
         arr : dict {str : ndarray}
             node : 3D array containing corrected rdata for one scan.
         """
-        # TODO: need to find out how to parse roi from the h5file. For now it will return the full rdata.
-        # It can be cropped during standard preprocessing
         with h5py.File(self.h5file, "r") as h5f:
             data = h5f[node][:].T
 
         # # print max
         print('shape, max coordinates, max value', data.shape, np.unravel_index(np.argmax(data), data.shape), np.max(data))
-        # # cut out roi region
-        data = data[self.roi[0] : self.roi[0] + self.roi[1], self.roi[2] : self.roi[2] + self.roi[3], :]
-        print('printing max for scan(s) trimmed to roi')
-        print('shape, max coordinates, max value', data.shape, np.unravel_index(np.argmax(data), data.shape), np.max(data))
-
         # apply correction if needed
         # the rdata already is corrected
 
@@ -83,8 +75,7 @@ class Detector_mpxgaas(esrf1Detector):
     Subclass of Detector. Encapsulates "mpxgaas" detector.
     """
     name = "mpxgaas"
-    dims = (516, 516)
-    roi = (0, 516, 0, 516)
+   # dims = (516, 516)
     pixel = (55.0e-6, 55e-6)
     pixelorientation = ('x-', 'y-')  # in xrayutilities notation
 

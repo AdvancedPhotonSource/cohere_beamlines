@@ -102,7 +102,7 @@ class aps1Detector(Detector):
         :param scan_info: info allowing detector to retrieve data for a scan
         :return: corrected data array
         """
-        slices_files = {}
+        frames_files = {}
 
         for file_name in os.listdir(scan_info):
             if file_name.endswith('tif'):
@@ -113,10 +113,10 @@ class aps1Detector(Detector):
             last_digits = re.search(r'\d+$', fnbase)
             if last_digits is not None:
                 key = int(last_digits.group())
-                slices_files[key] = ut.join(scan_info, file_name)
+                frames_files[key] = ut.join(scan_info, file_name)
 
-        ordered_keys = sorted(list(slices_files.keys()))
-        ordered_slices = [self.correct_frame(slices_files[k]) for k in ordered_keys]
+        ordered_keys = sorted(list(frames_files.keys()))
+        ordered_slices = [self.correct_frame(frames_files[k]) for k in ordered_keys]
 
         arr = np.stack(ordered_slices, axis=-1)
 
@@ -144,8 +144,7 @@ class ASI(aps1Detector):
     Subclass of Detector. Encapsulates any detector. Values are based on "34idcTIM2" detector.
     """
     name = "ASI"
-    dims = (518, 518)
-    roi = (0, 512, 0, 512)
+    #dims = (518, 518)
     pixel = (55.0e-6, 55e-6)
     pixelorientation = ('x+', 'y-')  # in xrayutilities notation
     whitefield = None
@@ -153,12 +152,10 @@ class ASI(aps1Detector):
     def __init__(self, params):
         super(ASI, self).__init__(params)
         # The detector attributes specific for the detector.
-        # Can include data directory, whitefield_filename, roi, etc.
+        # Can include data directory, whitefield_filename, etc.
 
         # keep parameters that are relevant to the detector
         self.data_dir = params.get('data_dir')
-        if 'roi' in params:
-            self.roi = params.get('roi')
         if 'whitefield_filename' in params:
             self.whitefield = ut.read_tif(params.get('whitefield_filename'))
             # the code below is specific to ASI detector
@@ -177,12 +174,10 @@ class ASI(aps1Detector):
         :param frame: 2D raw data file representing a frame
         :return: corrected frame
         """
-        roislice1 = slice(self.roi[0], self.roi[0] + self.roi[1])
-        roislice2 = slice(self.roi[2], self.roi[2] + self.roi[3])
-        frame = ut.read_tif(frame_filename)[roislice1, roislice2]
+        frame = ut.read_tif(frame_filename)
 
         if self.whitefield is not None:
-            frame = frame / self.whitefield[roislice1, roislice2] * self.Imult
+            frame = frame / self.whitefield * self.Imult
         else:
             # print('whitefield_filename not given, not correcting')
             pass
@@ -213,8 +208,7 @@ class BSE(aps1Detector):
     Subclass of Detector. Encapsulates any detector. Values are based on "34idcTIM2" detector.
     """
     name = "BSE"
-    dims = (4096, 4096)
-    roi = (0, 4096, 0, 4096)
+#    dims = (4096, 4096)
     pixel = (7.8e-6, 7.8e-6)
     pixelorientation = ('x-', 'y-')  # in xrayutilities notation
     whitefield = None
@@ -223,11 +217,9 @@ class BSE(aps1Detector):
     def __init__(self, params):
         super(BSE, self).__init__(params)
         # The detector attributes specific for the detector.
-        # Can include data directory, whitefield_filename, roi, etc.
+        # Can include data directory, whitefield_filename, etc.
         # keep parameters that are relevant to the detector
         self.data_dir = params.get('data_dir')
-        if 'roi' in params:
-            self.roi = params.get('roi')
         if 'darkfield_filename' in params:
            self.darkfield = ut.read_tif(params.get('darkfield_filename')).astype(np.int32)
 
@@ -241,13 +233,10 @@ class BSE(aps1Detector):
         :param frame: 2D raw data file representing a frame
         :return: corrected frame
         """
-        roislice1 = slice(self.roi[0], self.roi[0] + self.roi[1])
-        roislice2 = slice(self.roi[2], self.roi[2] + self.roi[3])
-        frame = ut.read_tif(frame_filename)[roislice1, roislice2].astype(np.int32)
-        self.slices = [roislice1, roislice2]
+        frame = ut.read_tif(frame_filename).astype(np.int32)
 
         if self.darkfield is not None:
-            frame = self.darkfield[roislice1, roislice2] - frame
+            frame = self.darkfield - frame
 
         return frame
 

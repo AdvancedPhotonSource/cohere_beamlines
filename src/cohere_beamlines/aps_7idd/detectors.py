@@ -105,9 +105,8 @@ class aps7Detector(Detector):
 
         ordered_keys = sorted(list(slices_files.keys()))
         ordered_frames = [ut.read_tif(slices_files[key]) for key in ordered_keys]
-#        ordered_slices = [self.correct_frame(slices_files[k]) for k in ordered_keys]
 
-        data = np.stack(ordered_frames, axis=-1)[self.slice]
+        data = np.stack(ordered_frames, axis=-1)
 
         if self.user_roi is not None:
             data = self.get_user_roi_slice(data)
@@ -145,7 +144,7 @@ class Detector_7iddrobot(aps7Detector):
     Subclass of Detector. Encapsulates "34idcTIM1" detector.
     """
     name = "7iddrobot"
-    roi = [0, 1062, 0, 1028]
+    #dims = [1062, 1028]
     pixel = (75.0e-6, 75e-6)
     pixelorientation = ('y+', 'x+')  # in xrayutilities notation
     darkfield = None
@@ -157,12 +156,8 @@ class Detector_7iddrobot(aps7Detector):
         # The detector attributes for background/whitefield/etc need to be set to read frames
         # this will capture things like data directory, darkfield_filename, etc.
         self.data_dir = params.get('data_dir') # mandatory
-        roi = params.get('roi', Detector_7iddrobot.roi)
-        # slices reflect transposed data
-        self.roi_slice = np.s_[roi[0]:roi[0] + roi[1], roi[2]:roi[2] + roi[3]]
-        self.slice = np.s_[roi[0]:roi[0] + roi[1], roi[2]:roi[2] + roi[3], :]
         if 'darkfield_filename' in params:
-            self.darkfield = ut.read_tif(params.get('darkfield_filename'))[self.roi_slice]
+            self.darkfield = ut.read_tif(params.get('darkfield_filename'))
 
 
     # TIM1 only needs bad pixels deleted.  Even that is optional.
