@@ -108,8 +108,8 @@ class aps7Detector(Detector):
 
         data = np.stack(ordered_frames, axis=-1)
 
-        if self.user_roi is not None:
-            data = self.get_user_roi_slice(data)
+        if self.roi is not None:
+            data = self.get_roi_slice(data)
 
         data = self.correct(data)
 

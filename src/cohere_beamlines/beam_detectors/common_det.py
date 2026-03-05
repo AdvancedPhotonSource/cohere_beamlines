@@ -9,8 +9,8 @@ class Detector(ABC):
     def __init__(self, params):
         self.min_frames = params.get('min_frames', 0)
         self.exclude_scans = params.get('exclude_scans', [])
-        self.user_roi = params.get('user_roi', None)
-        if self.user_roi is not None:
+        self.roi = params.get('roi', None)
+        if self.roi is not None:
             self.roi_format = params.get('roi_format')
         self.max_crop = params.get('max_crop', None)
 
@@ -20,7 +20,7 @@ class Detector(ABC):
         pass
 
 
-    def get_user_roi_slice(self, data):
+    def get_roi_slice(self, data):
         """
         Crops the data to the size of roi. The roi is interpreted according to the roi_format.
 
@@ -33,7 +33,7 @@ class Detector(ABC):
         :param roi_format:
         :return:
         """
-        roi = self.user_roi
+        roi = self.roi
         roi_format = self.roi_format
         shape = data.shape
         if roi_format == "center_point_dist":
@@ -78,7 +78,7 @@ class Detector(ABC):
         max_crop = self.max_crop
         shape = data.shape
 
-        def isOnedge(maxindx):
+        def is_onedge(maxindx):
             if maxindx[0] == 0 or maxindx[0] == shape[0] - 1:
                 return True
             if maxindx[1] == 0 or maxindx[1] == shape[1] - 1:
@@ -87,7 +87,7 @@ class Detector(ABC):
 
         # check if the max value is bad pixel. If so zero it and get the next max value.
         maxindx = np.unravel_index(data.argmax(), data.shape)
-        while (isOnedge(maxindx) or
+        while (is_onedge(maxindx) or
                data[maxindx[0] + 1, maxindx[1], maxindx[2]] == 0
                and data[maxindx[0] - 1, maxindx[1], maxindx[2]] == 0
                or data[maxindx[0], maxindx[1] + 1, maxindx[2]] == 0

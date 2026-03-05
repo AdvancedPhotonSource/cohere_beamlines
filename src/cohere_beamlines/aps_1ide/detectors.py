@@ -120,8 +120,8 @@ class aps1Detector(Detector):
 
         arr = np.stack(ordered_slices, axis=-1)
 
-        if self.user_roi is not None:
-            arr = self.get_user_roi_slice(arr)
+        if self.roi is not None:
+            arr = self.get_roi_slice(arr)
 
         if self.max_crop is not None:
             arr = self.get_max_crop_slice(arr)

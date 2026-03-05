@@ -108,8 +108,8 @@ class aps34Detector(Detector):
 
         data = np.stack(ordered_slices, axis=-1)
 
-        if self.user_roi is not None:
-            data = self.get_user_roi_slice(data)
+        if self.roi is not None:
+            data = self.get_roi_slice(data)
 
         if self.max_crop is not None:
             data = self.get_max_crop_slice(data)
@@ -143,7 +143,7 @@ class Detector_34idcTIM1(aps34Detector):
     """
     name = "34idcTIM1"
     dims = (256, 256)
-    roi = (0, 256, 0, 256)
+    det_roi = (0, 256, 0, 256)
     pixel = (55.0e-6, 55e-6)
     pixelorientation = ('x+', 'y-')  # in xrayutilities notation
     darkfield = None
@@ -155,6 +155,11 @@ class Detector_34idcTIM1(aps34Detector):
         # The detector attributes for background/whitefield/etc need to be set to read frames
         # this will capture things like data directory, darkfield_filename, etc.
         self.data_dir = params.get('data_dir') # mandatory
+        # the det_roi is detector roi selecting area that was captured, typically parsed from spec file.
+        # It is specific to 34idc.
+        if 'det_roi' in params:
+            self.det_roi = params.get('det_roi')
+        # roi is parameter used to crop data from captured array. The value is configured by user.
         if 'roi' in params:
             self.roi = params.get('roi')
         if 'darkfield_filename' in params:
@@ -174,9 +179,8 @@ class Detector_34idcTIM1(aps34Detector):
         frame : ndarray
             frame after correction
         """
-        roislice1 = slice(self.roi[0], self.roi[0] + self.roi[1])
-        roislice2 = slice(self.roi[2], self.roi[2] + self.roi[3])
-
+        roislice1 = slice(self.det_roi[0], self.det_roi[0] + self.det_roi[1])
+        roislice2 = slice(self.det_roi[2], self.det_roi[2] + self.det_roi[3])
         frame = ut.read_tif(filename)
 
         if self.darkfield is not None:
@@ -207,7 +211,7 @@ class Detector_34idcTIM2(aps34Detector):
     """
     name = "34idcTIM2"
     dims = (512, 512)
-    roi = (0, 512, 0, 512)
+    det_roi = (0, 512, 0, 512)
     pixel = (55.0e-6, 55e-6)
     pixelorientation = ('x+', 'y-')  # in xrayutilities notation
     whitefield = None
@@ -221,6 +225,11 @@ class Detector_34idcTIM2(aps34Detector):
         # this will capture things like data directory, whitefield_filename, etc.
         # keep parameters that are relevant to the detector
         self.data_dir = params.get('data_dir')
+        # the det_roi is detector roi selecting area that was captured, typically parsed from spec file.
+        # It is specific to 34idc.
+        if 'det_roi' in params:
+            self.det_roi = params.get('det_roi')
+        # roi is parameter used to crop data from captured array. The value is configured by user.
         if 'roi' in params:
             self.roi = params.get('roi')
         if 'whitefield_filename' in params:
@@ -255,13 +264,13 @@ class Detector_34idcTIM2(aps34Detector):
         frame : ndarray
             frame after correction
         """
-        # roi is start,size,start,size
+        # det_roi is start,size,start,size
         # will be in imageJ coords, so might need to transpose,or just switch x-y
         # divide whitefield
         # blank out pixels identified in darkfield
         # insert 4 cols 5 rows if roi crosses asic boundary
-        roislice1 = slice(self.roi[0], self.roi[0] + self.roi[1])
-        roislice2 = slice(self.roi[2], self.roi[2] + self.roi[3])
+        roislice1 = slice(self.det_roi[0], self.det_roi[0] + self.det_roi[1])
+        roislice2 = slice(self.det_roi[2], self.det_roi[2] + self.det_roi[3])
 
         frame = ut.read_tif(filename)
         if self.whitefield is not None:
@@ -293,12 +302,12 @@ class Detector_34idcTIM2(aps34Detector):
         # Need to break this out.  When aligning multi scans the insert will mess up the aligns
         # or maybe we just need to re-blank the seams after the aligns?
         # I can't decide if the seams are a detriment to the alignment.  might need to try some.
-        s1range = range(self.roi[0], self.roi[0] + self.roi[1])
-        s2range = range(self.roi[2], self.roi[2] + self.roi[3])
+        s1range = range(self.det_roi[0], self.det_roi[0] + self.det_roi[1])
+        s2range = range(self.det_roi[2], self.det_roi[2] + self.det_roi[3])
         dims = arr.shape
         seam_added = False
 
-        # get the col that start at det col 256 in the roi
+        # get the col that start at det col 256 in the det_roi
         try:
             i1 = s1range.index(256)  # if not in range try will except
             if i1 != 0:
@@ -338,8 +347,8 @@ class Detector_34idcTIM2(aps34Detector):
             frame after removing rows/columns
         """
         # modify the slices if 256 is in roi
-        s1range = range(self.roi[0], self.roi[0] + self.roi[1])
-        s2range = range(self.roi[2], self.roi[2] + self.roi[3])
+        s1range = range(self.det_roi[0], self.det_roi[0] + self.det_roi[1])
+        s2range = range(self.det_roi[2], self.det_roi[2] + self.det_roi[3])
         try:
             i1 = s1range.index(256)  # if not in range try will except
             if i1 != 0:

@@ -21,7 +21,7 @@ config_instr_error = { 'Diffractometer':['missing mandatory diffractometer param
                        'Specfile': ['missing specfile parameter. The program will use detector configured in config_instr and roi in config_prep',
                                     'specfile parameter should be string',
                                     'specfile parameter parsing error'],
-                       'Roi': ['roi parameter should be a list of int'],
+                       'Roi': ['det_roi parameter should be a list of int'],
                        'Datadir': ['data_dir parameter should be string',
                                    'missing mandatory parameter data_dir'],
                        'Darkfield': ['darkfield_filename parameter should be string',
@@ -199,8 +199,8 @@ def ver_config_instr(config_map):
         return ''
 
     config_parameter = 'Roi'
-    if 'roi' in config_map:
-        if not ver_list_int('roi', config_map['roi']):
+    if 'det_roi' in config_map:
+        if not ver_list_int('det_roi', config_map['det_roi']):
             config_error = 0
             error_message = get_config_error_message(fname, config_map_file, config_parameter, config_error)
             print (error_message)

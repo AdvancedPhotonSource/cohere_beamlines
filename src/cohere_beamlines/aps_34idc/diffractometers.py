@@ -98,7 +98,7 @@ class Diffractometer_34idc(Diffractometer):
             print(str(ex))
 
         try:
-            spec_dict['roi'] = [int(n) for n in ss.getheader_element('UIMR5').split()]
+            spec_dict['det_roi'] = [int(n) for n in ss.getheader_element('UIMR5').split()]
         except Exception as ex:
             print(str(ex))
 

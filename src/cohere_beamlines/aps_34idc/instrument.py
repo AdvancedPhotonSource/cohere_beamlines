@@ -43,7 +43,7 @@ def parse_spec4roi(specfile, scan):
         print(str(ex))
 
     try:
-        params['roi'] = [int(n) for n in ss.getheader_element('UIMR5').split()]
+        params['det_roi'] = [int(n) for n in ss.getheader_element('UIMR5').split()]
     except Exception as ex:
         print (str(ex))
 

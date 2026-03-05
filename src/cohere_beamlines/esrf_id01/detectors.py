@@ -61,8 +61,8 @@ class esrf1Detector(Detector):
         # apply correction if needed
         # the rdata already is corrected
 
-        if self.user_roi is not None:
-            data = self.get_user_roi_slice(data)
+        if self.roi is not None:
+            data = self.get_roi_slice(data)
 
         if self.max_crop is not None:
             data = self.get_max_crop_slice(data)

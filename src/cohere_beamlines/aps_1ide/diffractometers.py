@@ -6,9 +6,6 @@
 
 import numpy as np
 from xrayutilities.io import spec as spec
-import math as m
-import xrayutilities.experiment as xuexp
-import xrayutilities.utilities_noconf as xutilnoconf
 from cohere_beamlines.beam_diffractometers.common_diff import Diffractometer
 
 
@@ -56,7 +53,7 @@ class Diffractometer_1ide(Diffractometer):
 
         Returns
         -------
-        dict with delta, gamma, theta, phi, chi, scanmot, scanmot_del, detdist, detector_name, energy
+        dict with metadata
         """
         spec_dict = {}
 

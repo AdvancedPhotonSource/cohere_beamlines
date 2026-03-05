@@ -84,8 +84,8 @@ class petra10Detector(Detector):
                 break
         data = self.correct(data)
         
-        if self.user_roi is not None:
-            data = self.get_user_roi_slice(data)
+        if self.roi is not None:
+            data = self.get_roi_slice(data)
 
         if self.max_crop is not None:
             data = self.get_max_crop_slice(data)
@@ -142,15 +142,6 @@ class Detector_e4m(petra10Detector):
         self.slice = np.s_[:, r[1]:r[3], r[0]:r[2]]
         self.darkfield = self.darkfield[np.s_[r[1]:r[3], r[0]:r[2]]]
 
-        if 'roi' in params:
-            if params['detector_module'] > 1:
-                print('Warning: roi parameter is only applied for detector_module 0 or 1.')
-            else:
-                # crops roi related to the module only
-                roi = params['roi']
-                self.slice = np.s_[:, roi[1]:roi[3], roi[0]:roi[2]]
-                self.darkfield = self.darkfield[np.s_[roi[1]:roi[3], roi[0]:roi[2]]]
-            
         self.darkfield = self.darkfield.T
 
 
@@ -250,13 +241,6 @@ class Detector_e2500(petra10Detector):
                     self.darkfield[:, np.s_[c + x - 2:c + x + 2]] = 0
             for c in self.module_y:
                 self.darkfield[np.s_[c + 256 - 2:c + 256 + 2], :] = 0
-               
-        if 'roi' in params:
-        # crops to the given roi size, for module 0 only
-            roi = params['roi']
-            self.slice = np.s_[:, roi[1]:roi[3], roi[0]:roi[2]]
-            self.darkfield = self.darkfield[np.s_[roi[1]:roi[3], roi[0]:roi[2]]]
-        self.darkfield = self.darkfield.T
 
 
     def correct(self, data):
