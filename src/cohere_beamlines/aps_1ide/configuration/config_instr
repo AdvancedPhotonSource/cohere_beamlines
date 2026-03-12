@@ -9,7 +9,6 @@ whitefield_filename = "cohere_ui/beamlines/aps_1ide/detector_corrections/ASI/old
 //Imult = 10000
                             // Optional, defaults to the average of the whitefield.
                             // A multiplication factor used to renormalize the whitefield correction.
-roi = [0, 256, 256, 256]
 vff_r_offset = -0.107
 vff_eta_offset = 0.232
 energy = 52.0

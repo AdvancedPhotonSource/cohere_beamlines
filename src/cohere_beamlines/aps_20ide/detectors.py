@@ -137,6 +137,7 @@ class aps20Detector(Detector):
 
         return arr
 
+
     @abstractmethod
     def correct(self, frame):
         """
@@ -241,6 +242,7 @@ class BSE(aps20Detector):
     pixelorientation = ('x-', 'y-')  # in xrayutilities notation
     whitefield = None
     darkfield=None
+    rbb_smooth_sigma = 50
 
     def __init__(self, params):
         super(BSE, self).__init__(params)
@@ -280,7 +282,7 @@ class BSE(aps20Detector):
             pass
 
         data = np.nan_to_num(data)
-
+        self.rbb(data)
         return data
 
 

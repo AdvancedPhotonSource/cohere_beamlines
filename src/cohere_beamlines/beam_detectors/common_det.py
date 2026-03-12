@@ -5,14 +5,40 @@ class Detector(ABC):
     """
     Abstract class representing detector.
     """
+    # list of detectors that may use remove_horizontal_band_background
+    det_bound_background = ['BSE']
 
     def __init__(self, params):
         self.min_frames = params.get('min_frames', 0)
         self.exclude_scans = params.get('exclude_scans', [])
         self.roi = params.get('roi', None)
         if self.roi is not None:
-            self.roi_format = params.get('roi_format')
+            roi_format = params.get('roi_format', None)
+            if roi_format is None:
+                raise ValueError('roi_format must be specified')
+            # translate roi to the same format: 'start_point_dist'
+            # [start_point_x, distance_x, start_point_y, distance_y] = roi
+            if roi_format == "center_point_dist":
+                [center_point_x, center_point_y, distance_x, distance_y] = self.roi
+                start_point_x = max(0, center_point_x - distance_x // 2)
+                start_point_y = max(0, center_point_y - distance_y //2)
+                self.roi = [start_point_x, distance_x, start_point_y, distance_y]
+            elif roi_format == "start_point_end_point":
+                [start_point_x, start_point_y, end_point_x, end_point_y] = self.roi
+                distance_x = end_point_x - start_point_x
+                distance_y = end_point_y - start_point_y
+                self.roi = [start_point_x, distance_x, start_point_y, distance_y]
+            elif roi_format != "start_point_dist":
+                raise ValueError(f'roi_format {roi_format} not supported')
         self.max_crop = params.get('max_crop', None)
+        # logic for removing bound background
+        if self.name in self.det_bound_background:
+            self.remove_band_background = params.get('remove_band_background', False)
+            if self.remove_band_background:
+                if 'rbb_smooth_sigma' in params:
+                    self.rbb_smooth_sigma = params.get('rbb_smooth_sigma', self.rbb_smooth_sigma)
+                if 'rbb_robust' in params and params['rbb_robust']:
+                    self.rbb_robust = params['rbb_robust']
 
 
     @abstractmethod
@@ -34,28 +60,10 @@ class Detector(ABC):
         :return:
         """
         roi = self.roi
-        roi_format = self.roi_format
         shape = data.shape
-        if roi_format == "center_point_dist":
-            [center_point_x, center_point_y, distance_x, distance_y] = roi
-            half_dist_x = distance_x // 2
-            half_dist_y = distance_y // 2
-            slice_start_x = max(0, center_point_x - half_dist_x)
-            slice_end_x = min(shape[0], slice_start_x + distance_x)
-            slice_start_y = max(0, center_point_y - half_dist_y)
-            slice_end_y = min(shape[1], slice_start_y + distance_y)
-            cropslice0 = slice(slice_start_x, slice_end_x)
-            cropslice1 = slice(slice_start_y, slice_end_y)
-        elif roi_format == "start_point_end_point":
-            [start_point_x, start_point_y, end_point_x, end_point_y] = roi
-            cropslice0 = slice(start_point_x, end_point_x)
-            cropslice1 = slice(start_point_y, end_point_y)
-        elif roi_format == "start_point_dist":
-            [start_point_x, start_point_y, distance_x, distance_y] = roi
-            cropslice0 = slice(start_point_x, min(start_point_x + distance_x, shape[0]))
-            cropslice1 = slice(start_point_y, min(start_point_y + distance_y, shape[1]))
-        else:
-            raise ValueError("Unknown roi format: {}".format(roi_format))
+        [start_point_x, distance_x, start_point_y, distance_y] = roi
+        cropslice0 = slice(start_point_x, min(start_point_x + distance_x, shape[0]))
+        cropslice1 = slice(start_point_y, min(start_point_y + distance_y, shape[1]))
 
         return data[cropslice0, cropslice1, :]
 
@@ -102,3 +110,72 @@ class Detector(ABC):
         cropslice1 = slice(max(0, maxindx[1] - mc1), min(maxindx[1] + mc1, shape[1]))
         return data[cropslice0, cropslice1, :]
 
+
+    def rbb(self, data):
+        if self.name in self.det_bound_background and self.remove_band_background:
+            if self.roi is None:
+                band_roi = [1, -1]
+            else:
+                band_roi = [self.roi[0] - self.roi[2], self.roi[0] + 2 * self.roi[2]]
+            if band_roi[0] < 0:
+                band_roi[0] = 1
+            if band_roi[1] > data.shape[0] - 1:
+                band_roi[1] = -1
+            strip_data = data[band_roi[0] : band_roi[1], :, :]
+            data[band_roi[0]:band_roi[1],:,:] = self.remove_horizontal_band_background(strip_data, self.rbb_smooth_sigma, self.rbb_robust)
+        return data
+
+
+    def remove_horizontal_band_background(self,
+            stack,
+            smooth_sigma,  # smoothing along x to avoid removing real features
+            robust = True,
+    ):
+        """
+        Remove time-varying horizontal banding (row-wise background) from a stack.
+
+        Assumes banding is mostly a function of row (y): each frame has stripes that are
+        approximately constant across columns, possibly slowly varying along columns.
+
+        Parameters
+        ----------
+        stack : (T,Y,Z) array
+        smooth_sigma : float
+            Std-dev for 1D Gaussian smoothing of the estimated row profile along x.
+            Higher = smoother background estimate (safer for preserving objects).
+        robust : bool
+            If True, estimate row profile using median across columns (robust to objects).
+            If False, use mean.
+        """
+        if self.name not in Detector.det_bound_background:
+            raise ValueError("removal of horizontal bound background does not apply to detector '{}'".format(self.name))
+
+        if stack.ndim != 3:
+            raise ValueError("stack must be (T,Y,Z)")
+
+        stack_f = stack.astype(np.float32, copy=False)
+        T, Y, X = stack_f.shape
+
+        # 1) Estimate per-frame row profile: bg_row[t,y] ~ median_x I[t,y,x]
+        if robust:
+            bg_row = np.median(stack_f, axis=2)  # (T,Y)
+        else:
+            bg_row = np.mean(stack_f, axis=2)  # (T,Y)
+
+        # 2) Expand to full image as stripes constant across x
+        bg = bg_row[:, :, None] * np.ones((1, 1, X), dtype=np.float32)
+
+        # 3) Optional: allow slow variation along x by smoothing the residual field
+        #    If your stripes are not perfectly constant across x, estimate a low-pass 2D bg:
+        #    Here we smooth only along x (axis=2) to keep "horizontal pattern" character.
+        if smooth_sigma and smooth_sigma > 0:
+            # FFT-based Gaussian smoothing along x for speed (works well for large X)
+            x = np.fft.rfftfreq(X)
+            gauss = np.exp(-(2 * (np.pi ** 2)) * (smooth_sigma ** 2) * (x ** 2)).astype(np.float32)  # (X//2+1,)
+            # Smooth each (t,y,:) row in frequency domain
+            bg_fft = np.fft.rfft(bg, axis=2)
+            bg_fft *= gauss[None, None, :]
+            bg = np.fft.irfft(bg_fft, n=X, axis=2).astype(np.float32)
+
+        corrected = stack_f - bg
+        return corrected.astype(np.float32)  # , bg.astype(np.float32)

@@ -10,6 +10,7 @@ from PyQt5.QtWidgets import *
 import ast
 import cohere_core.utilities as ut
 import cohere_beamlines.aps_20ide.diffractometers as diff
+from cohere_beamlines.beam_detectors.common_det import Detector as det
 
 
 def msg_window(text):
@@ -286,6 +287,10 @@ class InstrTab(QWidget):
         gen_layout.addRow("Imult", self.Imult)
         self.detector = QLineEdit()
         gen_layout.addRow("detector", self.detector)
+        self.remove_band_background = None
+        detector_layout = QFormLayout()
+        self.set_detector_layout(detector_layout)
+        gen_layout.addRow(detector_layout)
         tab_layout.addLayout(gen_layout)
         tab_layout.addWidget(self.extended.meta_widget)
         if not self.add_config:
@@ -301,6 +306,7 @@ class InstrTab(QWidget):
         tab_layout.addStretch()
         self.setLayout(tab_layout)
 
+        self.detector.textChanged.connect(lambda: self.set_detector_layout(detector_layout))
         self.data_dir_button.clicked.connect(self.set_data_dir)
         self.dark_file_button.clicked.connect(self.set_dark_file)
         self.white_file_button.clicked.connect(self.set_white_file)
@@ -358,11 +364,44 @@ class InstrTab(QWidget):
             self.detector.setText(str(conf_map['detector']).replace(" ", ""))
             self.detector.setStyleSheet('color: black')
 
+        if self.remove_band_background is not None:
+            self.remove_band_background.setChecked('remove_band_background' in conf_map and conf_map['remove_band_background'])
+            if self.remove_band_background:
+                if 'rbb_smooth_sigma' in conf_map:
+                    self.rbb_smooth_sigma.setText(str(conf_map['rbb_smooth_sigma']))
+                if 'rbb_robust' in conf_map and conf_map['rbb_robust']:
+                    self.rbb_robust.setChecked(True)
+
         if self.add_config:
             self.extended.load_tab(conf_map)
 
-        if self.main_win.is_exp_exists():
-            self.save_conf()
+
+    def toggle_rbb(self):
+        if self.remove_band_background.isChecked():
+            self.rbb_smooth_sigma = QLineEdit()
+            self.rbb_layout.addRow('rbb smooth sigma', self.rbb_smooth_sigma)
+            self.rbb_robust = QCheckBox('rbb robust')
+            self.rbb_robust.setToolTip('if robust, estimates are calculated by median, otherwise by mean')
+            self.rbb_layout.addWidget(self.rbb_robust)
+        else:
+            for i in reversed(range(self.rbb_layout.count())):
+                self.rbb_layout.itemAt(i).widget().setParent(None)
+
+    def set_detector_layout(self, layout):
+        if str(self.detector.text()) in det.det_bound_background:
+            self.remove_band_background = QCheckBox('remove band bckground')
+            layout.addWidget(self.remove_band_background)
+            self.remove_band_background.setChecked(False)
+            self.rbb_layout = QFormLayout()
+            layout.addRow(self.rbb_layout)
+        else:
+            if self.remove_band_background is not None:
+                self.remove_band_background.setChecked(False)
+                self.remove_band_background.setParent(None)
+            self.remove_band_background = None
+
+        if self.remove_band_background is not None:
+            self.remove_band_background.stateChanged.connect(self.toggle_rbb)
 
 
     def set_dark_file(self):
@@ -475,6 +514,12 @@ class InstrTab(QWidget):
             conf_map['Imult'] = ast.literal_eval(str(self.Imult.text()).replace(os.linesep,''))
         if len(self.detector.text()) > 0:
             conf_map['detector'] = str(self.detector.text())
+        if self.remove_band_background is not None and self.remove_band_background.isChecked():
+            conf_map['remove_band_background'] = ast.literal_eval(str(self.remove_band_background.isChecked()))
+            if self.rbb_smooth_sigma.text().strip() != '':
+                conf_map['rbb_smooth_sigma'] = ast.literal_eval(str(self.rbb_smooth_sigma.text()))
+            if self.rbb_robust.isChecked():
+                conf_map['rbb_robust'] = ast.literal_eval(str(self.rbb_robust.isChecked()))
 
         if self.add_config:
             conf_map.update(self.extended.get_instr_config())
@@ -502,10 +547,5 @@ class InstrTab(QWidget):
 
         # # verify that disp configuration is ok
         # er_msg = ver.verify('config_instr', conf_map)
-        # print('er, conf', er_msg, conf_map)
-        # if len(er_msg) > 0:
-        #     msg_window(er_msg)
-        #     if not self.main_win.no_verify:
-        #         return
 
         ut.write_config(conf_map, ut.join(self.main_win.experiment_dir, 'conf', 'config_instr'))
