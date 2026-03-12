@@ -7,7 +7,7 @@ import os
 import numpy as np
 import h5py
 import numpy as np
-from cohere_beamlines.beam_diffractometers.common_diff import Diffractometer
+from cohere_beamlines.common.diff import Diffractometer
 import cohere_core.utilities as ut
 
 

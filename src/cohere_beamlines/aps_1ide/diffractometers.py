@@ -6,7 +6,7 @@
 
 import numpy as np
 from xrayutilities.io import spec as spec
-from cohere_beamlines.beam_diffractometers.common_diff import Diffractometer
+from cohere_beamlines.common.diff import Diffractometer
 
 
 class Diffractometer_1ide(Diffractometer):

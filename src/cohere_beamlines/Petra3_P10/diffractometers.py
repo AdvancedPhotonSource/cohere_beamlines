@@ -7,7 +7,7 @@
 import os.path
 import cohere_core.utilities as ut
 import numpy as np
-from cohere_beamlines.beam_diffractometers.common_diff import Diffractometer
+from cohere_beamlines.common.diff import Diffractometer
 import cohere_beamlines.Petra3_P10.p10_scan_reader as p10sr
 
 

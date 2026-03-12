@@ -6,7 +6,7 @@
 
 import numpy as np
 import os
-from cohere_beamlines.beam_detectors.common_det import Detector
+from cohere_beamlines.common.det import Detector
 from abc import abstractmethod
 import h5py
 import cohere_beamlines.Petra3_P10.p10_scan_reader as p10sr

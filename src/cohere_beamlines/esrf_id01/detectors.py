@@ -6,7 +6,7 @@
 
 import numpy as np
 import h5py
-from cohere_beamlines.beam_detectors.common_det import Detector
+from cohere_beamlines.common.det import Detector
 from cohere_core import data
 
 

@@ -10,7 +10,7 @@ from PyQt5.QtWidgets import *
 import ast
 import cohere_core.utilities as ut
 import cohere_beamlines.aps_20ide.diffractometers as diff
-from cohere_beamlines.beam_detectors.common_det import Detector as det
+from cohere_beamlines.common.det import Detector as det
 
 
 def msg_window(text):

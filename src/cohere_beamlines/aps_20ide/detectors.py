@@ -7,7 +7,7 @@
 import os
 import numpy as np
 import cohere_core.utilities as ut
-from cohere_beamlines.beam_detectors.common_det import Detector
+from cohere_beamlines.common.det import Detector
 from abc import abstractmethod
 import h5py
 
