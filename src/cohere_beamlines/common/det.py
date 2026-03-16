@@ -31,6 +31,8 @@ class Detector(ABC):
             elif roi_format != "start_point_dist":
                 raise ValueError(f'roi_format {roi_format} not supported')
         self.max_crop = params.get('max_crop', None)
+        self.min_frames = params.get('min_frames', 0)
+        self.exclude_scans = params.get('exclude_scans', [])
         # logic for removing bound background
         if self.name in self.det_bound_background:
             self.remove_band_background = params.get('remove_band_background', False)

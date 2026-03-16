@@ -141,8 +141,8 @@ class Detector_e4m(petra10Detector):
         r = self.ROIS[params.get('detector_module', 0)]
         self.slice = np.s_[:, r[1]:r[3], r[0]:r[2]]
         self.darkfield = self.darkfield[np.s_[r[1]:r[3], r[0]:r[2]]]
-
         self.darkfield = self.darkfield.T
+        # min_frames, exclude_scanc, roi, max_crop are saved in common.det.Detectors superclass
 
 
     def correct(self, data):
@@ -241,6 +241,7 @@ class Detector_e2500(petra10Detector):
                     self.darkfield[:, np.s_[c + x - 2:c + x + 2]] = 0
             for c in self.module_y:
                 self.darkfield[np.s_[c + 256 - 2:c + 256 + 2], :] = 0
+        # min_frames, exclude_scanc, roi, max_crop are saved in common.det.Detectors superclass
 
 
     def correct(self, data):

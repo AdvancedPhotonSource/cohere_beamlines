@@ -159,9 +159,6 @@ class Detector_34idcTIM1(aps34Detector):
         # It is specific to 34idc.
         if 'det_roi' in params:
             self.det_roi = params.get('det_roi')
-        # roi is parameter used to crop data from captured array. The value is configured by user.
-        if 'roi' in params:
-            self.roi = params.get('roi')
         if 'darkfield_filename' in params:
             self.darkfield = ut.read_tif(params.get('darkfield_filename'))
 
@@ -229,9 +226,6 @@ class Detector_34idcTIM2(aps34Detector):
         # It is specific to 34idc.
         if 'det_roi' in params:
             self.det_roi = params.get('det_roi')
-        # roi is parameter used to crop data from captured array. The value is configured by user.
-        if 'roi' in params:
-            self.roi = params.get('roi')
         if 'whitefield_filename' in params:
             self.whitefield = ut.read_tif(params.get('whitefield_filename'))
             # the code below is specific to TIM2 detector, excluding the correction of the weird pixels
@@ -244,10 +238,7 @@ class Detector_34idcTIM2(aps34Detector):
             self.darkfield = ut.read_tif(params.get('darkfield_filename'))
             if self.whitefield is not None:
                 self.whitefield = np.where(self.darkfield > 1, 0, self.whitefield)  # kill known bad pixel
-
-        self.min_frames = params.get('min_frames', 0)
-        self.exclude_scans = params.get('exclude_scans', [])
-        self.max_crop = params.get('max_crop', None)
+        # min_frames, exclude_scanc, roi, max_crop are saved in common.det.Detectors superclass
 
 
     def correct_frame(self, filename):

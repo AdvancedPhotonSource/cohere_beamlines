@@ -184,6 +184,7 @@ class ASI(aps20Detector):
             self.darkfield = np.where(self.darkfield > 0, 0.0, 1.0)
             if self.whitefield is not None:
                     self.whitefield = self.darkfield * self.whitefield  # kill known bad pixel
+        # min_frames, exclude_scanc, roi, max_crop are saved in common.det.Detectors superclass
 
 
     def correct(self, data):
@@ -254,6 +255,7 @@ class BSE(aps20Detector):
             self.darkfield = ut.read_tif(params.get('darkfield_filename')).T
             self.darkfield = self.darkfield
             self.darkfield = np.where(self.darkfield > 0, 0.0, 1.0)
+        # min_frames, exclude_scanc, roi, max_crop are saved in common.det.Detectors superclass
 
 
     def correct(self, data):

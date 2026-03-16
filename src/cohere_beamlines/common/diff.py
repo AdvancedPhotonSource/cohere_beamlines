@@ -24,28 +24,28 @@ class Diffractometer(ABC):
 
     def check_params(self, params):
         if 'detector' not in params:
-            print('detector name not parsed from spec file and not configured')
-            raise KeyError('detector name not parsed from spec file and not configured')
+            print('detector name not parsed from metadata and not configured')
+            raise KeyError('detector name not parsed from metadata and not configured')
         if self.detectordist_mne not in params:
-            print('detdist not parsed from spec file and not configured')
-            raise KeyError('detdist not parsed from spec file and not configured')
+            print('detdist not parsed from metadata and not configured')
+            raise KeyError('detdist not parsed from metadata and not configured')
         if 'scanmot' not in params:
-            print('scanmot not parsed from spec file and not configured')
-            raise KeyError('scanmot not parsed from spec file and not configured')
+            print('scanmot not parsed from metadata and not configured')
+            raise KeyError('scanmot not parsed from metadata and not configured')
         if 'energy' not in params:
-            print('energy not parsed from spec file and not configured')
-            raise KeyError('energy not parsed from spec file and not configured')
+            print('energy not parsed from metadata and not configured')
+            raise KeyError('energy not parsed from metadata and not configured')
         if 'scanmot_del' not in params:
-            print('scanmot_del not parsed from spec file and not configured')
-            raise KeyError('scanmot_del not parsed from spec file and not configured')
+            print('scanmot_del not parsed from metadata and not configured')
+            raise KeyError('scanmot_del not parsed from metadata and not configured')
         for ax in self.sampleaxes_mne:
             if ax not in params:
-                print(f'{ax} not parsed from spec file and not configured')
-                raise KeyError (f'{ax} not parsed from spec file and not configured')
+                print(f'{ax} not parsed from metadata and not configured')
+                raise KeyError (f'{ax} not parsed from metadata and not configured')
         for ax in self.detectoraxes_mne:
             if ax not in params:
-                print(f'{ax} not parsed from spec file and not configured')
-                raise KeyError (f'{ax} not parsed from spec file and not configured')
+                print(f'{ax} not parsed from metadata and not configured')
+                raise KeyError (f'{ax} not parsed from metadata and not configured')
 
 
     def get_geometry(self, shape, scan, conf_params, det, **kwargs):

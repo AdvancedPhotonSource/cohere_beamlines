@@ -163,6 +163,7 @@ class ASI(aps1Detector):
             self.wfstd = np.std(self.whitefield)
             self.whitefield = np.where(self.whitefield < self.wfavg - 3 * self.wfstd, 0, self.whitefield)
             self.Imult = params.get('Imult', self.wfavg)
+        # min_frames, exclude_scanc, roi, max_crop are saved in common.det.Detectors superclass
 
 
     def correct_frame(self, frame_filename):
@@ -222,6 +223,7 @@ class BSE(aps1Detector):
         self.data_dir = params.get('data_dir')
         if 'darkfield_filename' in params:
            self.darkfield = ut.read_tif(params.get('darkfield_filename')).astype(np.int32)
+        # min_frames, exclude_scanc, roi, max_crop are saved in common.det.Detectors superclass
 
 
     def correct_frame(self, frame_filename):

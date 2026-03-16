@@ -63,7 +63,7 @@ class Instrument:
         return self.det_obj.get_scan_array(scan)
 
 
-    def get_geometry(self, shape, scan, conf_params):
+    def get_geometry(self, shape, scan, conf_maps):
         """
         Calculates geometry based on diffractometer's and detctor's attributes and experiment parameters.
 
@@ -87,7 +87,13 @@ class Instrument:
         :return: tuple of arrays containing geometry in reciprocal space and direct space
             (Trecip, Tdir)
         """
-        return self.diff_obj.get_geometry(shape, scan, conf_params)
+        if self.diff_obj is None:
+            raise RuntimeError
+
+        # get needed parameters into one flat dict
+        conf_params = conf_maps['config_instr']
+        conf_params['binning'] = conf_maps['config_data'].get('binning', [1,1,1])
+        return self.diff_obj.get_geometry(shape, scan, conf_params, det)
 
 
 def create_instr(configs, **kwargs):
@@ -110,11 +116,9 @@ def create_instr(configs, **kwargs):
         raise ValueError('detector name not configured in config_instr')
 
     if 'need_detector' in kwargs and kwargs['need_detector']:
-        if 'config_prep' not in configs:
-            msg = 'missing config_prep'
-            raise ValueError(msg)
         det_params = instr_config_params
-        det_params.update(configs['config_prep'])
+        if 'config_prep' in configs:
+            det_params.update(configs['config_prep'])
 
         det_obj = det.create_detector(det_name, det_params)
 
@@ -123,7 +127,7 @@ def create_instr(configs, **kwargs):
         msg = 'detector name not configured in config_instr'
         raise ValueError(msg)
 
-    diff_obj = diff.create_diffractometer(diff_name)
+    diff_obj = diff.create_diffractometer(diff_name, instr_config_params)
 
     instr = Instrument(det_obj, diff_obj)
     main_conf = configs['config']

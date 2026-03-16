@@ -1,19 +1,18 @@
 import os
 import numpy as np
 import cohere_core.utilities as ut
-from abc import ABC, abstractmethod
+from abc import abstractmethod
+from cohere_beamlines.common.det import Detector
 import re
 
 
-class Detector(ABC):
+class simpleDetector(Detector):
     """
-    Class representing detector.
-
-    Some functions are common for all detectors and are implemented in the base class.
+    Abstract class representing detector.
     """
 
-    def __init__(self, name):
-        self.name = name
+    def __init__(self, params):
+        super(simpleDetector, self).__init__(params)
 
     def datainfo4scans(self, scans):
         """
@@ -40,8 +39,22 @@ class Detector(ABC):
         # It is assumed scans is a single scan for simple beamline
         # The self.data_dir is a scan directory
 
-        scan = scans[0][0]
-        return [[scan, self.data_dir]]
+        the_scan = scans[0][0]
+
+        for scandir in sorted(os.listdir(self.data_dir)):
+            scandir_full = ut.join(self.data_dir, scandir)
+            if os.path.isdir(scandir_full):
+                last_digits = re.search(r'\d+$', scandir)
+                if last_digits is not None:
+                    scan = int(last_digits.group())
+                else:
+                    continue
+                if scan < the_scan:
+                    continue
+                elif scan == the_scan:
+                    return [[(scan, scandir_full)]]
+                else:
+                    raise Exception(f'did not find any data for scan {the_scan}')
 
 
     def get_scan_array(self, scan_info):
@@ -70,13 +83,13 @@ class Detector(ABC):
                 slices_files[key] = ut.join(scan_info, file_name)
 
         ordered_keys = sorted(list(slices_files.keys()))
-        ordered_slices = [self.correct_frame(slices_files[k]) for k in ordered_keys]
+        ordered_slices = [self.correct(slices_files[k]) for k in ordered_keys]
 
         return np.stack(ordered_slices, axis=-1)
 
 
     @abstractmethod
-    def correct_frame(self, frame):
+    def correct(self, frame):
         """
         Applies the correction for detector.
 
@@ -85,13 +98,13 @@ class Detector(ABC):
         """
 
 
-class Detector_34idcTIM1(Detector):
+class Detector_34idcTIM1(simpleDetector):
     """
     Subclass of Detector. Encapsulates "34idcTIM1" detector.
     """
     name = "34idcTIM1"
     dims = (256, 256)
-    roi = (0, 256, 0, 256)
+    det_roi = (0, 256, 0, 256)
     pixel = (55.0e-6, 55e-6)
     pixelorientation = ('x+', 'y-')  # in xrayutilities notation
     darkfield = None
@@ -99,19 +112,21 @@ class Detector_34idcTIM1(Detector):
     min_files = None  # defines minimum frame scans in scan directory
     Imult = 1.0
 
-    def __init__(self, conf_params):
-        super(Detector_34idcTIM1, self).__init__(self.name)
+    def __init__(self, params):
+        super(Detector_34idcTIM1, self).__init__(params)
         # The detector attributes for background/whitefield/etc need to be set to read frames
         # this will capture things like data directory, darkfield_filename, etc.
-        self.data_dir = conf_params.get('data_dir') # mandatory
-        if 'roi' in conf_params:
-            self.roi = conf_params.get('roi')
-        if 'darkfield_filename' in conf_params:
-            self.darkfield = ut.read_tif(conf_params.get('darkfield_filename'))
+        self.data_dir = params.get('data_dir') # mandatory
+        # the det_roi is detector roi selecting area that was captured, typically parsed from spec file.
+        # It is specific to 34idc.
+        if 'det_roi' in params:
+            self.det_roi = params.get('det_roi')
+        if 'darkfield_filename' in params:
+            self.darkfield = ut.read_tif(params.get('darkfield_filename'))
 
 
     # TIM1 only needs bad pixels deleted.  Even that is optional.
-    def correct_frame(self, filename):
+    def correct(self, filename):
         """
         Reads raw frame from a file, and applies correction for 34idcTIM1 detector, i.e. darkfield.
         Parameters
@@ -123,8 +138,8 @@ class Detector_34idcTIM1(Detector):
         frame : ndarray
             frame after correction
         """
-        roislice1 = slice(self.roi[0], self.roi[0] + self.roi[1])
-        roislice2 = slice(self.roi[2], self.roi[2] + self.roi[3])
+        roislice1 = slice(self.det_roi[0], self.det_roi[0] + self.det_roi[1])
+        roislice2 = slice(self.det_roi[2], self.det_roi[2] + self.det_roi[3])
 
         frame = ut.read_tif(filename)
 
@@ -134,43 +149,44 @@ class Detector_34idcTIM1(Detector):
         return frame
 
 
-class Detector_34idcTIM2(Detector):
+class Detector_34idcTIM2(simpleDetector):
     """
     Subclass of Detector. Encapsulates any detector. Values are based on "34idcTIM2" detector.
     """
     name = "34idcTIM2"
     dims = (512, 512)
-    roi = (0, 512, 0, 512)
     pixel = (55.0e-6, 55e-6)
     pixelorientation = ('x+', 'y-')  # in xrayutilities notation
     whitefield = None
     darkfield = None
 
-    def __init__(self, conf_params):
-        super(Detector_34idcTIM2, self).__init__(self.name)
+    def __init__(self, params):
+        super(Detector_34idcTIM2, self).__init__(params)
         # The detector attributes specific for the detector.
-        # Can include data directory, whitefield_filename, roi, etc.
+        # Can include data directory, whitefield_filename, etc.
 
         # keep parameters that are relevant to the detector
-        if 'roi' in conf_params:
-            self.roi = conf_params.get('roi')
-        if 'data_dir' in conf_params:
-            self.data_dir = conf_params.get('data_dir')
-        if 'whitefield_filename' in conf_params:
-            self.whitefield = ut.read_tif(conf_params.get('whitefield_filename'))
+        if 'data_dir' in params:
+            self.data_dir = params.get('data_dir')
+        # the det_roi is detector roi selecting area that was captured, typically parsed from spec file.
+        # It is specific to 34idc.
+        if 'det_roi' in params:
+            self.det_roi = params.get('det_roi')
+        if 'whitefield_filename' in params:
+            self.whitefield = ut.read_tif(params.get('whitefield_filename'))
             # the code below is specific to TIM2 detector, excluding the correction of the weird pixels
             # self.whitefield[255:257, 0:255] = 0  # wierd pixels on edge of seam (TL/TR). Kill in WF kills in returned frame as well.
             self.wfavg = np.average(self.whitefield)
             self.wfstd = np.std(self.whitefield)
             self.whitefield = np.where(self.whitefield < self.wfavg - 3 * self.wfstd, 0, self.whitefield)
-            self.Imult = conf_params.get('Imult', self.wfavg)
-        if 'darkfield_filename' in conf_params:
-            self.darkfield = ut.read_tif(conf_params.get('darkfield_filename'))
+            self.Imult = params.get('Imult', self.wfavg)
+        if 'darkfield_filename' in params:
+            self.darkfield = ut.read_tif(params.get('darkfield_filename'))
             if self.whitefield is not None:
                 self.whitefield = np.where(self.darkfield > 1, 0, self.whitefield)  # kill known bad pixel
 
 
-    def correct_frame(self, frame_filename):
+    def correct(self, frame_filename):
         """
         Applies correction for the detector.
 
@@ -179,33 +195,25 @@ class Detector_34idcTIM2(Detector):
         :param frame: 2D raw data file representing a frame
         :return: corrected frame
         """
-        roislice1 = slice(self.roi[0], self.roi[0] + self.roi[1])
-        roislice2 = slice(self.roi[2], self.roi[2] + self.roi[3])
+        roislice1 = slice(self.det_roi[0], self.det_roi[0] + self.det_roi[1])
+        roislice2 = slice(self.det_roi[2], self.det_roi[2] + self.det_roi[3])
 
         frame = ut.read_tif(frame_filename)
         if self.whitefield is not None:
             frame = frame / self.whitefield[roislice1, roislice2] * self.Imult
-        else:
-            print('whitefield_filename not given, not correcting')
         if self.darkfield is not None:
             frame = np.where(self.darkfield[roislice1, roislice2] > 1, 0.0, frame)
-        else:
-            print('darkfield_filename not given, not correcting')
 
         frame = np.where(np.isfinite(frame), frame, 0)
 
         return frame
 
 
+dets = {detector.name: detector for detector in simpleDetector.__subclasses__()}
+
 def create_detector(det_name, params):
-    for detector in Detector.__subclasses__():
-        if detector.name == det_name:
-            return  detector(params)
-    msg = f'detector {det_name} not defined'
-    raise ValueError(msg)
+   return dets[det_name](params)
 
-
-dets = {'34idcTIM1' : Detector_34idcTIM1, '34idcTIM2' : Detector_34idcTIM2}
 
 def get_pixel(det_name):
     return dets[det_name].pixel
@@ -213,4 +221,3 @@ def get_pixel(det_name):
 
 def get_pixel_orientation(det_name):
     return dets[det_name].pixelorientation
-

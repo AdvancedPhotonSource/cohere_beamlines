@@ -158,6 +158,7 @@ class Detector_7iddrobot(aps7Detector):
         self.data_dir = params.get('data_dir') # mandatory
         if 'darkfield_filename' in params:
             self.darkfield = ut.read_tif(params.get('darkfield_filename'))
+        # min_frames, exclude_scanc, roi, max_crop are saved in common.det.Detectors superclass
 
 
     # TIM1 only needs bad pixels deleted.  Even that is optional.
