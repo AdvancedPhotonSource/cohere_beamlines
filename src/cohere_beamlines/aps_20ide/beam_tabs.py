@@ -379,6 +379,7 @@ class InstrTab(QWidget):
     def toggle_rbb(self):
         if self.remove_band_background.isChecked():
             self.rbb_smooth_sigma = QLineEdit()
+            self.rbb_smooth_sigma.setToolTip('if left blank, the sigma will default to detector optimal value')
             self.rbb_layout.addRow('rbb smooth sigma', self.rbb_smooth_sigma)
             self.rbb_robust = QCheckBox('rbb robust')
             self.rbb_robust.setToolTip('if robust, estimates are calculated by median, otherwise by mean')
