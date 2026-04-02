@@ -480,6 +480,7 @@ class InstrTab(QWidget):
     def clear_conf(self):
         self.diffractometer.setText('')
         self.data_dir_button.setText('')
+        self.sample.setText('')
         if self.add_config:
             self.extended.clear_conf()
         self.dark_file_button.setText('')

@@ -228,12 +228,12 @@ class Detector_e2500(petra10Detector):
         r = self.ROIS[params.get('detector_module', 0)]
         self.slice = np.s_[:, r[1]:r[3], r[0]:r[2]]
         if 'darkfield_filename' in params:
-            mask = np.load(params['darkfield_filename']).T
+            mask = np.load(params['darkfield_filename'])
             mask = np.where(mask > 0, 0, 1)
         else:
             mask = np.ones((r[3]-r[1], r[2]-r[0]))
             mask[self.bad_pix[:, 0], self.bad_pix[:, 1]] = 0
-        self.darkfield = mask
+        self.darkfield = mask.T
 
         if params.get('clear_asicbounds', True):
             for c in self.module_x:

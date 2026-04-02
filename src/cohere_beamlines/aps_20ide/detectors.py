@@ -119,24 +119,23 @@ class aps20Detector(Detector):
                 # the darkfield was not configured, try to read it from h5 file
                 try:
                     darkfield = h5f['exchange/data_dark'][:].T
-                    if np.sum(whitefield) > 0:
-                        self.darkfield = darkfield
+                    if np.sum(darkfield) > 0:
+                        # self.darkfield = np.median(darkfield,axis=2)
                         self.darkfield = np.where(self.darkfield > 0, 0.0, 1.0)
                         if self.whitefield is not None:
-                                self.whitefield = self.darkfield * self.whitefield  # kill known bad pixel
+                            self.whitefield = self.darkfield * self.whitefield  # kill known bad pixel
                 except:
                     pass
 
-        arr = self.correct(arr)
-
         if self.roi is not None:
             arr = self.get_roi_slice(arr)
+
+        arr = self.correct(arr)
 
         if self.max_crop is not None:
             arr = self.get_max_crop_slice(arr)
 
         return arr
-
 
     @abstractmethod
     def correct(self, frame):
@@ -147,12 +146,13 @@ class aps20Detector(Detector):
         :return: corrected frame
         """
 
+
 class ASI(aps20Detector):
     """
     Subclass of Detector. Encapsulates any detector. Values are based on "34idcTIM2" detector.
     """
     name = "ASI"
-    #dims = (512, 512)
+    # dims = (512, 512)
     pixel = (55.0e-6, 55e-6)
     pixelorientation = ('x+', 'y-')  # in xrayutilities notation
     whitefield = None
@@ -183,9 +183,8 @@ class ASI(aps20Detector):
             self.darkfield = self.darkfield
             self.darkfield = np.where(self.darkfield > 0, 0.0, 1.0)
             if self.whitefield is not None:
-                    self.whitefield = self.darkfield * self.whitefield  # kill known bad pixel
+                self.whitefield = self.darkfield * self.whitefield  # kill known bad pixel
         # min_frames, exclude_scanc, roi, max_crop are saved in common.det.Detectors superclass
-
 
     def correct(self, data):
         """
@@ -198,14 +197,100 @@ class ASI(aps20Detector):
         """
         if self.darkfield is not None:
             if len(self.darkfield.shape) == 2:
-                cor = self.darkfield[:,:,np.newaxis]
+                cor = self.darkfield[:, :, np.newaxis]
             else:
                 cor = self.darkfield
             data = data * cor
 
         if self.whitefield is not None:
             if len(self.whitefield.shape) == 2:
-                cor = self.whitefield[:,:,np.newaxis]
+                cor = self.whitefield[:, :, np.newaxis]
+            else:
+                cor = self.whitefield
+            data = data / cor * self.Imult
+        else:
+            pass
+
+        data = np.nan_to_num(data)
+
+        return data
+
+    @staticmethod
+    def check_mandatory_params(params):
+        """
+        For the ASI detector the data directory is mandatory parameter.
+
+        :params: parameters needed to create detector
+        :return: message indicating problem or empty message if all is ok
+        """
+        if 'data_dir' not in params:
+            msg = 'data_dir parameter not configured, mandatory for 34idcTIM2 detector.'
+            raise ValueError(msg)
+        data_dir = params['data_dir']
+        if not os.path.isdir(data_dir):
+            msg = f'data_dir directory {data_dir} does not exist.'
+            raise ValueError(msg)
+
+
+class Lambda(aps20Detector):
+    """
+    Subclass of Detector. Encapsulates any detector. Values are based on "34idcTIM2" detector.
+    """
+    name = "Lambda"
+    # dims = (512, 512)
+    pixel = (55.0e-6, 55e-6)
+    pixelorientation = ('x+', 'y-')  # in xrayutilities notation
+    whitefield = None
+    darkfield = None
+    max_crop = None
+    min_frames = 0  # defines minimum frame scans in scan directory
+    Imult = None
+
+    def __init__(self, params):
+        super(Lambda, self).__init__(params)
+        # The detector attributes specific for the detector.
+        # Can include data directory, whitefield_filename, etc.
+        # keep parameters that are relevant to the detector
+        self.data_dir = params.get('data_dir')
+        self.Imult = params.get('Imult', ASI.Imult)
+        # init darkfield and whitefield if given
+        if 'whitefield_filename' in params:
+            self.whitefield = ut.read_tif(params.get('whitefield_filename')).T
+            self.whitefield = self.whitefield
+            # the code below is specific to ASI detector
+            self.wfavg = np.average(self.whitefield)
+            self.wfstd = np.std(self.whitefield)
+            self.whitefield = np.where(self.whitefield < self.wfavg - 3 * self.wfstd, 0, self.whitefield)
+            if self.Imult is None:
+                self.Imult = self.wfavg
+
+        if 'darkfield_filename' in params:
+            self.darkfield = ut.read_tif(params.get('darkfield_filename')).T
+            self.darkfield = self.darkfield
+            self.darkfield = np.where(self.darkfield > 0, 0.0, 1.0)
+            if self.whitefield is not None:
+                self.whitefield = self.darkfield * self.whitefield  # kill known bad pixel
+        # min_frames, exclude_scanc, roi, max_crop are saved in common.det.Detectors superclass
+
+    def correct(self, data):
+        """
+        Applies correction for the detector.
+
+        For ASI detector apply whitefield.
+
+        :param frame: 2D raw data file representing a frame
+        :return: corrected frame
+        """
+        if self.darkfield is not None:
+            if len(self.darkfield.shape) == 2:
+                cor = self.darkfield[:, :, np.newaxis]
+            else:
+                cor = self.darkfield
+            data = data * cor
+
+        if self.whitefield is not None:
+            if len(self.whitefield.shape) == 2:
+                cor = self.whitefield[:, :, np.newaxis]
             else:
                 cor = self.whitefield
             data = data / cor * self.Imult
@@ -238,12 +323,13 @@ class BSE(aps20Detector):
     Subclass of Detector. Encapsulates any detector. Values are based on "34idcTIM2" detector.
     """
     name = "BSE"
-    #dims = (4096, 4096)
+    # dims = (4096, 4096)
     pixel = (7.8e-6, 7.8e-6)
-    pixelorientation = ('x-', 'y-')  # in xrayutilities notation
+    pixelorientation = ('x+', 'y-')  # ('x-', 'y-')  # in xrayutilities notation
     whitefield = None
-    darkfield=None
+    darkfield = None
     rbb_smooth_sigma = 50
+    rbb_robust = True
 
     def __init__(self, params):
         super(BSE, self).__init__(params)
@@ -252,11 +338,21 @@ class BSE(aps20Detector):
         # keep parameters that are relevant to the detector
         self.data_dir = params.get('data_dir')
         if 'darkfield_filename' in params:
-            self.darkfield = ut.read_tif(params.get('darkfield_filename')).T
-            self.darkfield = self.darkfield
-            self.darkfield = np.where(self.darkfield > 0, 0.0, 1.0)
-        # min_frames, exclude_scanc, roi, max_crop are saved in common.det.Detectors superclass
+            # print(params.get('darkfield_filename'))
+            dark_filename = params.get("darkfield_filename")
+            if not dark_filename:
+                return
 
+            ext = dark_filename.split(".")[-1].lower()
+
+            if ext in ("tif", "tiff"):
+                self.darkfield = ut.read_tif(dark_filename).T
+
+            elif ext == "h5":
+                with h5py.File(dark_filename, "r") as h5f:
+                    self.darkfield = np.median(h5f["exchange/data_dark"][:].T, axis=2)
+
+        # min_frames, exclude_scanc, roi, max_crop are saved in common.det.Detectors superclass
 
     def correct(self, data):
         """
@@ -269,14 +365,15 @@ class BSE(aps20Detector):
         """
         if self.darkfield is not None:
             if len(self.darkfield.shape) == 2:
-                cor = self.darkfield[:,:,np.newaxis]
+                cor = self.darkfield[:, :, np.newaxis]
             else:
                 cor = self.darkfield
-            data = data * cor
+            data = np.abs(cor - data)
+            print(data.shape)
 
         if self.whitefield is not None:
             if len(self.whitefield.shape) == 2:
-                cor = self.whitefield[:,:,np.newaxis]
+                cor = self.whitefield[:, :, np.newaxis]
             else:
                 cor = self.whitefield
             data = data / cor * self.Imult
@@ -284,8 +381,7 @@ class BSE(aps20Detector):
             pass
 
         data = np.nan_to_num(data)
-        self.rbb(data)
-        return data
+        return self.remove_horizontal_band_background(data, self.rbb_smooth_sigma, self.rbb_robust)
 
 
     @staticmethod
@@ -296,7 +392,7 @@ class BSE(aps20Detector):
         :params: parameters needed to create detector
         :return: message indicating problem or empty message if all is ok
         """
-        if  'data_dir' not in params:
+        if 'data_dir' not in params:
             msg = 'data_dir parameter not configured, mandatory for 34idcTIM2 detector.'
             raise ValueError(msg)
         data_dir = params['data_dir']
@@ -307,8 +403,9 @@ class BSE(aps20Detector):
 
 dets = {detector.name: detector for detector in aps20Detector.__subclasses__()}
 
+
 def create_detector(det_name, params):
-   return dets[det_name](params)
+    return dets[det_name](params)
 
 
 def get_pixel(det_name):

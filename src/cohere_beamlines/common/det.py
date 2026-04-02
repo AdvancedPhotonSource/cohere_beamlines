@@ -41,7 +41,8 @@ class Detector(ABC):
                     self.rbb_smooth_sigma = params.get('rbb_smooth_sigma', self.rbb_smooth_sigma)
                 if 'rbb_robust' in params and params['rbb_robust']:
                     self.rbb_robust = params['rbb_robust']
-
+        self.darkfield = None
+        self.whitefield = None
 
     @abstractmethod
     def get_scan_array(self, scan_info):
@@ -66,6 +67,11 @@ class Detector(ABC):
         [start_point_x, distance_x, start_point_y, distance_y] = roi
         cropslice0 = slice(start_point_x, min(start_point_x + distance_x, shape[0]))
         cropslice1 = slice(start_point_y, min(start_point_y + distance_y, shape[1]))
+
+        if self.darkfield is not None:
+            self.darkfield = self.darkfield[cropslice0, cropslice1]
+        if self.whitefield is not None:
+            self.whitefield = self.whitefield[cropslice0, cropslice1]
 
         return data[cropslice0, cropslice1, :]
 
@@ -113,21 +119,6 @@ class Detector(ABC):
         return data[cropslice0, cropslice1, :]
 
 
-    def rbb(self, data):
-        if self.name in self.det_bound_background and self.remove_band_background:
-            if self.roi is None:
-                band_roi = [1, -1]
-            else:
-                band_roi = [self.roi[0] - self.roi[2], self.roi[0] + 2 * self.roi[2]]
-            if band_roi[0] < 0:
-                band_roi[0] = 1
-            if band_roi[1] > data.shape[0] - 1:
-                band_roi[1] = -1
-            strip_data = data[band_roi[0] : band_roi[1], :, :]
-            data[band_roi[0]:band_roi[1],:,:] = self.remove_horizontal_band_background(strip_data, self.rbb_smooth_sigma, self.rbb_robust)
-        return data
-
-
     def remove_horizontal_band_background(self,
             stack,
             smooth_sigma,  # smoothing along x to avoid removing real features
@@ -153,31 +144,31 @@ class Detector(ABC):
             raise ValueError("removal of horizontal bound background does not apply to detector '{}'".format(self.name))
 
         if stack.ndim != 3:
-            raise ValueError("stack must be (T,Y,Z)")
+            raise ValueError("stack must be (Y, X, T)")
 
         stack_f = stack.astype(np.float32, copy=False)
-        T, Y, X = stack_f.shape
+        Y, X, T = stack_f.shape
 
-        # 1) Estimate per-frame row profile: bg_row[t,y] ~ median_x I[t,y,x]
+        # 1) Estimate per-frame row profile: bg_row[x,t] ~ median_x I[y,x,t]
         if robust:
-            bg_row = np.median(stack_f, axis=2)  # (T,Y)
+            bg_row = np.median(stack_f, axis=0)  # (X,T)
         else:
-            bg_row = np.mean(stack_f, axis=2)  # (T,Y)
+            bg_row = np.mean(stack_f, axis=0)  # (X,T)
 
         # 2) Expand to full image as stripes constant across x
-        bg = bg_row[:, :, None] * np.ones((1, 1, X), dtype=np.float32)
+        bg = bg_row[None, :, :] * np.ones((Y, 1, 1), dtype=np.float32)
 
         # 3) Optional: allow slow variation along x by smoothing the residual field
         #    If your stripes are not perfectly constant across x, estimate a low-pass 2D bg:
         #    Here we smooth only along x (axis=2) to keep "horizontal pattern" character.
         if smooth_sigma and smooth_sigma > 0:
             # FFT-based Gaussian smoothing along x for speed (works well for large X)
-            x = np.fft.rfftfreq(X)
-            gauss = np.exp(-(2 * (np.pi ** 2)) * (smooth_sigma ** 2) * (x ** 2)).astype(np.float32)  # (X//2+1,)
+            y = np.fft.rfftfreq(Y)
+            gauss = np.exp(-(2 * (np.pi ** 2)) * (smooth_sigma ** 2) * (y ** 2)).astype(np.float32)  # (X//2+1,)
             # Smooth each (t,y,:) row in frequency domain
-            bg_fft = np.fft.rfft(bg, axis=2)
-            bg_fft *= gauss[None, None, :]
-            bg = np.fft.irfft(bg_fft, n=X, axis=2).astype(np.float32)
+            bg_fft = np.fft.rfft(bg, axis=0)
+            bg_fft *= gauss[:, None, None]
+            bg = np.fft.irfft(bg_fft, n=Y, axis=0).astype(np.float32)
 
         corrected = stack_f - bg
         return corrected.astype(np.float32)  # , bg.astype(np.float32)
