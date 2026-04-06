@@ -19,10 +19,14 @@ classifiers = [
 license = { file = "LICENSE" }
 
 dependencies = [
+                'numpy',
                 'pyqt5',
                 'scikit-image',
                 'xrayutilities',
                 ]
+
+[tool.setuptools.packages.find]
+    where = ["src"]
 
 [project.urls]
 Homepage = "https://github.com/AdvancedPhotonSource/cohere_beamlines"
