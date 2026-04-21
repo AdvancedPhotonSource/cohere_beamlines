@@ -5,8 +5,8 @@
 # #########################################################################
 
 import os
-from PyQt5.QtCore import *
-from PyQt5.QtWidgets import *
+from PyQt6.QtCore import *
+from PyQt56.QtWidgets import *
 import ast
 import cohere_core.utilities as ut
 import cohere_beamlines.aps_20ide.diffractometers as diff
@@ -28,7 +28,7 @@ def msg_window(text):
     msg.setIcon(QMessageBox.Information)
     msg.setText(text)
     msg.setWindowTitle("Info")
-    msg.exec_()
+    msg.exec()
 
 
 def select_file(start_dir):
@@ -47,7 +47,7 @@ def select_file(start_dir):
     dialog = QFileDialog(None, 'select dir', start_dir)
     dialog.setFileMode(QFileDialog.ExistingFile)
     dialog.setSidebarUrls([QUrl.fromLocalFile(start_dir)])
-    if dialog.exec_() == QDialog.Accepted:
+    if dialog.exec() == QDialog.DialogCode.Accepted:
         return str(dialog.selectedFiles()[0]).replace(os.sep, '/')
     else:
         return None
@@ -67,9 +67,9 @@ def select_dir(start_dir):
     """
     start_dir = start_dir.replace(os.sep, '/')
     dialog = QFileDialog(None, 'select dir', start_dir)
-    dialog.setFileMode(QFileDialog.DirectoryOnly)
+    dialog.setFileMode(QFileDialog.FileMode.Directory)
     dialog.setSidebarUrls([QUrl.fromLocalFile(start_dir)])
-    if dialog.exec_() == QDialog.Accepted:
+    if dialog.exec() == QDialog.DialogCode.Accepted:
         return str(dialog.selectedFiles()[0]).replace(os.sep, '/')
     else:
         return None

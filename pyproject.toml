@@ -20,7 +20,7 @@ license-files = ["LICENSE"]
 
 dependencies = [
                 'numpy',
-                'pyqt5',
+                'pyqt6',
                 'xrayutilities',
                 ]
 
