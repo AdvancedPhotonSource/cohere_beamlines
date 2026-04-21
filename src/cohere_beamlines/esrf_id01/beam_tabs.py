@@ -24,7 +24,7 @@ def msg_window(text):
     noting
     """
     msg = QMessageBox()
-    msg.setIcon(QMessageBox.Information)
+    msg.setIcon(QMessageBox.Icon.Information)
     msg.setText(text)
     msg.setWindowTitle("Info")
     msg.exec()
