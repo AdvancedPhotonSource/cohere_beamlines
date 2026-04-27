@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "cohere_beamlines"
-version = "4.5.1"
+version = "4.5.2"
 authors = [
   { name="Barbara Frosik", email="bfrosik@anl.gov" },
   { name="Ross Harder", email="rharder@anl.gov" }
@@ -19,9 +19,9 @@ classifiers = [
 license-files = ["LICENSE"]
 
 dependencies = [
-                'numpy',
                 'pyqt6',
                 'xrayutilities',
+                'numpy>=2.0'
                 ]
 
 [tool.setuptools.packages.find]
