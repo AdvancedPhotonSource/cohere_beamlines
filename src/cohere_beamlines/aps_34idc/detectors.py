@@ -11,6 +11,7 @@ import cohere_core.utilities as ut
 from cohere_beamlines.common.det import Detector
 from abc import abstractmethod
 
+
 class aps34Detector(Detector):
     """
     Abstract class representing detector.
@@ -18,7 +19,7 @@ class aps34Detector(Detector):
 
     def __init__(self, params):
         super(aps34Detector, self).__init__(params)
-
+#        print(params)
 
     def dirs4scans(self, scans):
         """
@@ -68,7 +69,7 @@ class aps34Detector(Detector):
                             break
                         scan_range = scans[sr_idx]
                         scans_dirs = scans_dirs_ranges[sr_idx]
- 
+
                 elif scan > scan_range[-1]:
                     sr_idx += 1
                     if sr_idx > len(scans) - 1:
@@ -79,7 +80,6 @@ class aps34Detector(Detector):
         # remove empty sub-lists
         scans_dirs_ranges = [e for e in scans_dirs_ranges if len(e) > 0]
         return scans_dirs_ranges
-
 
     def get_scan_array(self, scan_info):
         """
@@ -107,14 +107,15 @@ class aps34Detector(Detector):
         ordered_slices = [self.correct_frame(slices_files[k]) for k in ordered_keys]
 
         data = np.stack(ordered_slices, axis=-1)
+        offset = [0, 0]
 
         if self.roi is not None:
-            data = self.get_roi_slice(data)
+            data, offset = self.get_roi_slice(data)
 
         if self.max_crop is not None:
-            data = self.get_max_crop_slice(data)
+            data, offset = self.get_max_crop_slice(data, offset)
 
-        return data
+        return data, offset
 
 
     @abstractmethod
@@ -125,7 +126,6 @@ class aps34Detector(Detector):
         :params: parameters needed to create detector
         :return: message indicating problem or empty message if all is ok
         """
-
 
     @abstractmethod
     def correct_frame(self, frame):
@@ -149,19 +149,20 @@ class Detector_34idcTIM1(aps34Detector):
     darkfield = None
     data_dir = None
     Imult = 1.0
+    beam_zero = [dims[0] // 2, dims[1] // 2]  # beam center in pixel coordinates, used for RSM calculation.
+                                              # This is just an estimate and can be overridden by config params.
 
     def __init__(self, params):
         super(Detector_34idcTIM1, self).__init__(params)
         # The detector attributes for background/whitefield/etc need to be set to read frames
         # this will capture things like data directory, darkfield_filename, etc.
-        self.data_dir = params.get('data_dir') # mandatory
+        self.data_dir = params.get('data_dir')  # mandatory
         # the det_roi is detector roi selecting area that was captured, typically parsed from spec file.
         # It is specific to 34idc.
         if 'det_roi' in params:
             self.det_roi = params.get('det_roi')
         if 'darkfield_filename' in params:
             self.darkfield = ut.read_tif(params.get('darkfield_filename'))
-
 
     # TIM1 only needs bad pixels deleted.  Even that is optional.
     def correct_frame(self, filename):
@@ -185,6 +186,9 @@ class Detector_34idcTIM1(aps34Detector):
 
         return frame
 
+    def get_det_roi(self):
+        return self.det_roi[:4]
+
 
     @staticmethod
     def check_mandatory_params(params):
@@ -193,7 +197,7 @@ class Detector_34idcTIM1(aps34Detector):
 
         :return: message indicating problem or empty message if all is ok
         """
-        if  'data_dir' not in params:
+        if 'data_dir' not in params:
             msg = 'data_dir parameter not configured, mandatory for 34idcTIM1 detector.'
             raise ValueError(msg)
         data_dir = params['data_dir']
@@ -215,6 +219,9 @@ class Detector_34idcTIM2(aps34Detector):
     darkfield = None
     raw_frame = None
     Imult = None
+    seamsize = (4, 5)  # number of rows/columns to insert for seam correction
+    beam_zero = [dims[0] // 2, dims[1] // 2]  # beam center in pixel coordinates, used for RSM calculation.
+                                              # This is just an estimate and can be overridden by config params.
 
     def __init__(self, params):
         super(Detector_34idcTIM2, self).__init__(params)
@@ -229,7 +236,8 @@ class Detector_34idcTIM2(aps34Detector):
         if 'whitefield_filename' in params:
             self.whitefield = ut.read_tif(params.get('whitefield_filename'))
             # the code below is specific to TIM2 detector, excluding the correction of the weird pixels
-            self.whitefield[255:257, 0:255] = 0  # weird pixels on edge of seam (TL/TR). Kill in WF kills in returned frame as well.
+            self.whitefield[255:257, 0:255] = 0  # weird pixels on edge of seam (TL/TR).
+                                                 # Kill in WF kills in returned frame as well.
             self.wfavg = np.average(self.whitefield)
             self.wfstd = np.std(self.whitefield)
             self.whitefield = np.where(self.whitefield < self.wfavg - 3 * self.wfstd, 0, self.whitefield)
@@ -239,6 +247,7 @@ class Detector_34idcTIM2(aps34Detector):
             if self.whitefield is not None:
                 self.whitefield = np.where(self.darkfield > 1, 0, self.whitefield)  # kill known bad pixel
         # min_frames, exclude_scanc, roi, max_crop are saved in common.det.Detectors superclass
+        self.beam_zero = params.get('beam_zero', self.beam_zero)
 
 
     def correct_frame(self, filename):
@@ -276,6 +285,87 @@ class Detector_34idcTIM2(aps34Detector):
         if seam_added:
             frame = self.clear_seam(frame)
         return frame
+
+
+    def get_det_roi(self):
+        # if an roi crosses the asic seem we need to add cols/rows to correct for the seam.
+        # This method is being added for the RSM calculation that needs to know the actual detector area that is included.
+        # For TIM2 the seam is not included in the raw data, so the area could be bigger than the saved array.
+        # most modern detectors add the seam in the factory api.  So they should just return the detector ROI.
+        s1range = range(self.det_roi[0], self.det_roi[0] + self.det_roi[1])
+        s2range = range(self.det_roi[2], self.det_roi[2] + self.det_roi[3])
+        seam_added = False
+
+        # det roi is (start, size, start, size)
+        [roi0, roi1, roi2, roi3] = self.det_roi[:4]
+
+        # get the col that start at det col 256 in the det_roi
+        try:
+            i1 = s1range.index(256)  # if not in range try will except
+            # the if in insert seam is assuming nobody cares about adding to the left or right of the array
+            # if it ends on the seam.  But ROI will care about left because that effectively moves the pixels.
+            if i1 != 0:
+                roi0 = self.det_roi[0]
+                roi1 = self.det_roi[1] + self.seamsize[0]
+                seam_added = True
+            # frame=np.insert(normframe, i1, np.zeros((5,dims[0])),axis=0)
+            else:
+                roi0 = self.det_roi[0] + self.seamsize[0]
+                roi1 = self.det_roi[1]
+        except:
+            if self.det_roi[0] > 256:
+                roi0 = self.det_roi[0] + self.seamsize[0]
+            else:
+                roi0 = self.det_roi[0]
+            roi1 = self.det_roi[1]
+
+        try:
+            i2 = s2range.index(256)
+            if i2 != 0:
+                roi2 = self.det_roi[2]
+                roi3 = self.det_roi[3] + self.seamsize[1]
+                seam_added = True
+            # frame=np.insert(normframe, i2, np.zeros((5,dims[0])),axis=0)
+            else:
+                roi2 = self.det_roi[2] + self.seamsize[1]
+                roi3 = self.det_roi[3]
+        except:
+            if self.det_roi[2] > 256:
+                roi2 = self.det_roi[2] + self.seamsize[1]
+            else:
+                roi2 = self.det_roi[2]
+            roi3 = self.det_roi[3]
+        return [roi0, roi1, roi2, roi3]
+
+
+    def get_beamzero(self):
+        # if an roi crosses the asic seem we need to add cols/rows to correct for the seam.
+        # This method is being added for the RSM calculation that needs to know the actual detector area that is included.
+        # For TIM2 the seam is not included in the raw data, so the area could be bigger than the saved array.
+        # most modern detectors add the seam in the factory api.  So they should just return the detector ROI.
+        if self.beam_zero[0] >= 256:
+            beamzero0 = self.beam_zero[0] + self.seamsize[0]
+        else:
+            beamzero0 = self.beam_zero[0]
+        if self.beam_zero[1] >= 256:
+            beamzero1 = self.beam_zero[1] + self.seamsize[1]
+        else:
+            beamzero1 = self.beam_zero[1]
+        return [beamzero0, beamzero1]
+
+
+    def get_realpixelpos(self, rawpixel):
+        # need to add the seam size to the pixel position if the pixel is after the seam.
+        if rawpixel[0] >= 256:
+            pixel0 = rawpixel[0] + self.det_roi[0] + self.seamsize[0]
+        else:
+            pixel0 = rawpixel[0] + self.det_roi[0]
+        if rawpixel[1] >= 256:
+            pixel1 = rawpixel[1] + self.det_roi[1] + self.seamsize[1]
+        else:
+            pixel1 = rawpixel[1] + self.det_roi[1]
+        return [pixel0, pixel1]
+
 
     # frame here can also be a 3D array.
     def insert_seam(self, arr):
@@ -366,7 +456,7 @@ class Detector_34idcTIM2(aps34Detector):
         :params: parameters needed to create detector
         :return: message indicating problem or empty message if all is ok
         """
-        if  'data_dir' not in params:
+        if 'data_dir' not in params:
             msg = 'data_dir parameter not configured, mandatory for 34idcTIM2 detector.'
             raise ValueError(msg)
         data_dir = params['data_dir']
@@ -393,8 +483,9 @@ class Detector_34idcTIM2(aps34Detector):
 
 dets = {detector.name: detector for detector in aps34Detector.__subclasses__()}
 
+
 def create_detector(det_name, params):
-   return dets[det_name](params)
+    return dets[det_name](params)
 
 
 def get_pixel(det_name):
@@ -407,4 +498,3 @@ def get_pixel_orientation(det_name):
 
 def check_mandatory_params(det_name, params):
     return dets[det_name].check_mandatory_params(params)
-

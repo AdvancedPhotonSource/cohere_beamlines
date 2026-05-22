@@ -319,6 +319,8 @@ class InstrTab(QWidget):
         gen_layout.addRow("Imult", self.Imult)
         self.detector = QLineEdit()
         gen_layout.addRow("detector", self.detector)
+        self.beam_zero = QLineEdit()
+        gen_layout.addRow("beam zero position [x, y]", self.beam_zero)
         self.energy = QLineEdit()
         gen_layout.addRow("energy", self.energy)
         self.detdist = QLineEdit()
@@ -406,6 +408,9 @@ class InstrTab(QWidget):
         if 'detector' in conf_map:
             self.detector.setText(str(conf_map['detector']).replace(" ", ""))
             self.detector.setStyleSheet('color: black')
+        if 'beam_zero' in conf_map:
+            self.beam_zero.setText(str(conf_map['beam_zero']).replace(" ", ""))
+            self.beam_zero.setStyleSheet('color: black')
         if 'vff_r_offset' in conf_map:
             diff = str(conf_map['vff_r_offset']).replace(" ", "")
             self.vff_r_offset.setText(diff)
@@ -509,6 +514,7 @@ class InstrTab(QWidget):
         self.white_file_button.setText('')
         self.Imult.setText('')
         self.detector.setText('')
+        self.beam_zero.setText('')
         if self.add_config:
             self.extended.clear_conf()
         self.vff_r_offset.setText('')
@@ -562,6 +568,8 @@ class InstrTab(QWidget):
             conf_map['Imult'] = ast.literal_eval(str(self.Imult.text()).replace(os.linesep,''))
         if len(self.detector.text()) > 0:
             conf_map['detector'] = str(self.detector.text())
+        if len(self.beam_zero.text()) > 0:
+            conf_map['beam_zero'] = ast.literal_eval(str(self.beam_zero.text()).replace(os.linesep,''))
         if len(self.vff_r_offset.text()) > 0:
             conf_map['vff_r_offset'] = ast.literal_eval(str(self.vff_r_offset.text()))
         if len(self.vff_eta_offset.text()) > 0:

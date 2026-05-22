@@ -6,8 +6,8 @@
 
 import cohere_beamlines.aps_34idc.diffractometers as diff
 import cohere_beamlines.aps_34idc.detectors as det
+from cohere_beamlines.common.instr import Instrument
 from xrayutilities.io import spec
-
 
 def parse_spec4roi(specfile, scan):
     """
@@ -50,21 +50,19 @@ def parse_spec4roi(specfile, scan):
     return params
 
 
-class Instrument:
+class Instrument_aps_34idc(Instrument):
     """
       This class encapsulates istruments: diffractometer and detector used for that experiment.
       It provides interface to get the classes encapsulating the diffractometer and detector.
     """
-
-    def __init__(self, det_obj, diff_obj):
+    def __init__(self, det_obj, diff_obj, main_conf):
         """
         Constructor
 
         :param det_obj: detector object, can be None
         :param diff_obj: diffractometer object, can be None
         """
-        self.det_obj = det_obj
-        self.diff_obj = diff_obj
+        super(Instrument_aps_34idc, self).__init__(det_obj, diff_obj, main_conf)
 
 
     def datainfo4scans(self):
@@ -82,8 +80,13 @@ class Instrument:
     def get_scan_array(self, scan_dir):
         return self.det_obj.get_scan_array(scan_dir)
 
+    def get_RSM(self, scan):
+        return self.diff_obj.get_RSM(scan, self.det_obj)
 
-    def get_geometry(self, shape, scan, conf_maps, **kwargs):
+    def get_pixelQ(self, pixel, scan):
+        return self.diff_obj.get_pixelQ(pixel, scan, self.det_obj)
+
+    def get_geometry(self, max_ind, scan, conf_maps, **kwargs):
         """
         Calculates geometry based on diffractometer's and detctor's attributes and experiment parameters.
 
@@ -111,7 +114,7 @@ class Instrument:
         # get needed parameters into one flat dict
         conf_params = conf_maps['config_instr']
         conf_params['binning'] = conf_maps['config_data'].get('binning', [1,1,1])
-        return self.diff_obj.get_geometry(shape, scan, conf_params, det, **kwargs)
+        return self.diff_obj.get_geometry(max_ind, scan, conf_params, self.det_obj, **kwargs)
 
 
 def create_instr(configs, **kwargs):
@@ -162,17 +165,16 @@ def create_instr(configs, **kwargs):
     det_name = det_params.get('detector', None)
     if det_name is None:
         raise ValueError('detector name not configured and could not be parsed')
-    if 'need_detector' in kwargs and kwargs['need_detector']:
-        # add parameters from config_prep to det_params
-        if 'config_prep' in configs:
-            det_params.update(configs['config_prep'])
-        # check for parameters, it will raise exception if failed
-        det.check_mandatory_params(det_name, det_params)
 
-        det_obj = det.create_detector(det_name, det_params)
-        if det_obj is None:
-            msg = f'failed create {det_name} detector'
-            raise ValueError(msg)
+    if 'config_prep' in configs:
+        det_params.update(configs['config_prep'])
+    # check for parameters, it will raise exception if failed
+    det.check_mandatory_params(det_name, det_params)
+
+    det_obj = det.create_detector(det_name, det_params)
+    if det_obj is None:
+        msg = f'failed create {det_name} detector'
+        raise ValueError(msg)
 
     diff_name = instr_config_params.get('diffractometer', None)
     if diff_name is None:
@@ -184,7 +186,7 @@ def create_instr(configs, **kwargs):
             msg = f'failed create {diff_name} diffractometer'
             raise ValueError(msg)
 
-    instr = Instrument(det_obj, diff_obj)
+    instr = Instrument_aps_34idc(det_obj, diff_obj, main_config_params)
     instr.scan_ranges = scan_ranges
 
     return instr

@@ -366,6 +366,8 @@ class InstrTab(QWidget):
         gen_layout.addRow("Imult", self.Imult)
         self.det_roi = QLineEdit()
         gen_layout.addRow("detector area (det_roi)", self.det_roi)
+        self.beam_zero = QLineEdit()
+        gen_layout.addRow("beam zero position [x, y]", self.beam_zero)
         tab_layout.addLayout(gen_layout)
         tab_layout.addWidget(self.extended.spec_widget)
         if not self.add_config:
@@ -446,6 +448,9 @@ class InstrTab(QWidget):
         if 'det_roi' in conf_map:
             self.det_roi.setText(str(conf_map['det_roi']).replace(" ", ""))
             self.det_roi.setStyleSheet('color: black')
+        if 'beam_zero' in conf_map:
+            self.beam_zero.setText(str(conf_map['beam_zero']).replace(" ", ""))
+            self.beam_zero.setStyleSheet('color: black')
 
         if self.add_config:
             self.extended.load_tab(conf_map)
@@ -536,6 +541,7 @@ class InstrTab(QWidget):
         self.dark_file_button.setText('')
         self.white_file_button.setText('')
         self.det_roi.setText('')
+        self.beam_zero.setText('')
         self.Imult.setText('')
         if self.add_config:
             self.extended.clear_conf()
@@ -586,6 +592,8 @@ class InstrTab(QWidget):
             conf_map['Imult'] = ast.literal_eval(str(self.Imult.text()).replace(os.linesep,''))
         if len(self.det_roi.text()) > 0:
             conf_map['det_roi'] = ast.literal_eval(str(self.det_roi.text()).replace(os.linesep,''))
+        if len(self.beam_zero.text()) > 0:
+            conf_map['beam_zero'] = ast.literal_eval(str(self.beam_zero.text()).replace(os.linesep,''))
 
         if self.add_config:
             conf_map.update(self.extended.get_instr_config())

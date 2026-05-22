@@ -100,7 +100,7 @@ class aps20Detector(Detector):
         """
         h5file = scan_info
         with h5py.File(h5file, "r") as h5f:
-            arr = h5f['exchange/data'][:].T
+            data = h5f['exchange/data'][:].T
             if self.whitefield is None:
                 # the whitefield was not configured, try to read it from h5 file
                 try:
@@ -127,15 +127,17 @@ class aps20Detector(Detector):
                 except:
                     pass
 
-        if self.roi is not None:
-            arr = self.get_roi_slice(arr)
+        offset = [0, 0]
 
-        arr = self.correct(arr)
+        if self.roi is not None:
+            data, offset = self.get_roi_slice(data)
+        data = self.correct(data)
 
         if self.max_crop is not None:
-            arr = self.get_max_crop_slice(arr)
+            data, offset = self.get_max_crop_slice(data, offset)
 
-        return arr
+        return data, offset
+
 
     @abstractmethod
     def correct(self, frame):
@@ -152,7 +154,7 @@ class ASI(aps20Detector):
     Subclass of Detector. Encapsulates any detector. Values are based on "34idcTIM2" detector.
     """
     name = "ASI"
-    # dims = (512, 512)
+    det_roi = [0, 512, 0, 512]
     pixel = (55.0e-6, 55e-6)
     pixelorientation = ('x+', 'y-')  # in xrayutilities notation
     whitefield = None
@@ -215,6 +217,10 @@ class ASI(aps20Detector):
 
         return data
 
+    def get_det_roi(self):
+        return self.det_roi
+
+
     @staticmethod
     def check_mandatory_params(params):
         """
@@ -237,7 +243,8 @@ class Lambda(aps20Detector):
     Subclass of Detector. Encapsulates any detector. Values are based on "34idcTIM2" detector.
     """
     name = "Lambda"
-    # dims = (512, 512)
+    dims = (512, 512)
+    det_roi = [0, 512, 0, 512]
     pixel = (55.0e-6, 55e-6)
     pixelorientation = ('x+', 'y-')  # in xrayutilities notation
     whitefield = None
@@ -245,6 +252,7 @@ class Lambda(aps20Detector):
     max_crop = None
     min_frames = 0  # defines minimum frame scans in scan directory
     Imult = None
+    beam_zero = [dims[0] // 2, dims[1] // 2]
 
     def __init__(self, params):
         super(Lambda, self).__init__(params)
@@ -323,13 +331,15 @@ class BSE(aps20Detector):
     Subclass of Detector. Encapsulates any detector. Values are based on "34idcTIM2" detector.
     """
     name = "BSE"
-    # dims = (4096, 4096)
+    dims = (4096, 4096)
+    det_roi = [0, 4096, 0, 4096]
     pixel = (7.8e-6, 7.8e-6)
     pixelorientation = ('x+', 'y-')  # ('x-', 'y-')  # in xrayutilities notation
     whitefield = None
     darkfield = None
     rbb_smooth_sigma = 50
     rbb_robust = True
+    beam_zero = [dims[0] // 2, dims[1] // 2]
 
     def __init__(self, params):
         super(BSE, self).__init__(params)

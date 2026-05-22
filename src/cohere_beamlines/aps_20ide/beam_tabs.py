@@ -6,7 +6,7 @@
 
 import os
 from PyQt6.QtCore import *
-from PyQt56.QtWidgets import *
+from PyQt6.QtWidgets import *
 import ast
 import cohere_core.utilities as ut
 import cohere_beamlines.aps_20ide.diffractometers as diff
@@ -287,6 +287,8 @@ class InstrTab(QWidget):
         gen_layout.addRow("Imult", self.Imult)
         self.detector = QLineEdit()
         gen_layout.addRow("detector", self.detector)
+        self.beam_zero = QLineEdit()
+        gen_layout.addRow("beam zero position [x, y]", self.beam_zero)
         self.remove_band_background = None
         detector_layout = QFormLayout()
         self.set_detector_layout(detector_layout)
@@ -363,6 +365,9 @@ class InstrTab(QWidget):
         if 'detector' in conf_map:
             self.detector.setText(str(conf_map['detector']).replace(" ", ""))
             self.detector.setStyleSheet('color: black')
+        if 'beam_zero' in conf_map:
+            self.beam_zero.setText(str(conf_map['beam_zero']).replace(" ", ""))
+            self.beam_zero.setStyleSheet('color: black')
 
         if self.remove_band_background is not None:
             self.remove_band_background.setChecked('remove_band_background' in conf_map and conf_map['remove_band_background'])
@@ -468,6 +473,7 @@ class InstrTab(QWidget):
         self.white_file_button.setText('')
         self.Imult.setText('')
         self.detector.setText('')
+        self.beam_zero.setText('')
         if self.add_config:
             self.extended.clear_conf()
 
@@ -515,6 +521,8 @@ class InstrTab(QWidget):
             conf_map['Imult'] = ast.literal_eval(str(self.Imult.text()).replace(os.linesep,''))
         if len(self.detector.text()) > 0:
             conf_map['detector'] = str(self.detector.text())
+        if len(self.beam_zero.text()) > 0:
+            conf_map['beam_zero'] = ast.literal_eval(str(self.beam_zero.text()).replace(os.linesep,''))
         if self.remove_band_background is not None and self.remove_band_background.isChecked():
             conf_map['remove_band_background'] = ast.literal_eval(str(self.remove_band_background.isChecked()))
             if self.rbb_smooth_sigma.text().strip() != '':

@@ -27,7 +27,7 @@ class Diffractometer_1ide(Diffractometer):
     #det dist will be in the config file.  Combination of dist to eta and x95 offset to back.
 
     def __init__(self, params):
-        super(Diffractometer_1ide, self).__init__()
+        super(Diffractometer_1ide, self).__init__(params)
         self.specfile = params.get('specfile', None)
 
 
@@ -59,7 +59,8 @@ class Diffractometer_1ide(Diffractometer):
 
         # Scan numbers start at one but the list is 0 indexed
         try:
-            ss = spec.SPECFile(self.specfile)[scan - 1]
+            sf = spec.SPECFile(self.specfile)
+            ss = sf[scan - 1]
         except Exception as ex:
             print(str(ex))
             print('Could not parse ' + self.specfile)
@@ -68,12 +69,13 @@ class Diffractometer_1ide(Diffractometer):
         try:
             command = ss.command.split()
             spec_dict['scanmot'] = command[1]
-            spec_dict['scanmot_del'] = (float(command[3]) - float(command[2])) / int(command[4])
         except:
             pass
 
-        for mot_mne, mot_name in zip(self.sampleaxes_mne + self.detectoraxes_mne,
-                                     self.sampleaxes_name + self.detectoraxes_name):
+        motmne_name_dict = {**dict(zip(self.sampleaxes_mne, self.sampleaxes_name)),
+                            **dict(zip(self.detectoraxes_mne, self.detectoraxes_name))}
+
+        for mot_mne, mot_name in motmne_name_dict.items():
             try:
                 motname = "INIT_MOPO_{m}".format(m=mot_name)
                 spec_dict[mot_mne] = ss.init_motor_pos[motname]
@@ -85,6 +87,11 @@ class Diffractometer_1ide(Diffractometer):
             spec_dict['detdist'] = ss.init_motor_pos[motname]
         except:
             pass
+
+        try:
+            spec_dict['scanmot_posns'] = spec.getspec_scan(sf, scan, motmne_name_dict[spec_dict['scanmot']])[0]
+        except Exception as ex:
+            print(str(ex))
 
         try:
             spec_dict['detector'] = str(ss.getheader_element('UIMDET'))

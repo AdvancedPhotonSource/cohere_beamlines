@@ -27,7 +27,7 @@ class Diffractometer_P10sixc(Diffractometer):
     detectordist_mne = 'detdist'
 
     def __init__(self, params):
-        super(Diffractometer_P10sixc, self).__init__()
+        super(Diffractometer_P10sixc, self).__init__(params)
         self.data_dir = params['data_dir']
         self.sample = params['sample']
 
@@ -62,16 +62,16 @@ class Diffractometer_P10sixc(Diffractometer):
             return {}
         fio_dict = {}
         scanmeta = p10sr.P10Scan(self.data_dir, self.sample, scan, pathsave='', creat_save_folder=False)
-        command = scanmeta.command.split()
-        fio_dict['scanmot'] = command[1]
-        fio_dict['scanmot_del'] = (float(command[3]) - float(command[2])) / int(command[4])
+
+        scanmot = scanmeta.get_scan_motor()
+        fio_dict['scanmot'] = scanmot
+        fio_dict['scanmot_posns'] = scanmeta.get_scan_data(scanmot)
 
         for mot_mne, mot_name in zip(self.sampleaxes_mne + self.detectoraxes_mne,
                                      self.sampleaxes_name + self.detectoraxes_name):
             fio_dict[mot_mne] = scanmeta.get_motor_pos(mot_mne)
 
         fio_dict[self.detectordist_mne] = scanmeta.get_motor_pos(self.detectordist_name)
-
 
         fio_dict['energy'] = scanmeta.get_motor_pos('fmbenergy')
 

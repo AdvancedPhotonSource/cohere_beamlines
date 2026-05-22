@@ -26,7 +26,7 @@ class Diffractometer_id01(Diffractometer):
 
 
     def __init__(self, params):
-        super(Diffractometer_id01, self).__init__()
+        super(Diffractometer_id01, self).__init__(params)
         self.h5 = params.get('h5file', None)
         self.detector = params.get('detector', None)
 
@@ -61,14 +61,15 @@ class Diffractometer_id01(Diffractometer):
             command = info['title'].asstr()[()].split(" ")
             if command[0] in ("ascan", "a2scan", "a3scan"):
                 h5_dict['scanmot'] = command[1]
-                h5_dict['scanmot_del'] = (float(command[3]) - float(command[2])) / int(command[4])
             else:
                 raise IOError(f"{__name__}: Unknown scan type: {command[0]}")
             for mot_mne in self.sampleaxes_mne + self.detectoraxes_mne:
                 if mot_mne != h5_dict['scanmot']:
                     h5_dict[mot_mne] = info[f'instrument/positioners/{mot_mne}'][()]
                 else:
-                    h5_dict[mot_mne] = info[f'instrument/positioners/{mot_mne}'][()][0]
+                    h5_dict['scanmot_posns'] = info[f'instrument/positioners/{mot_mne}'][()]
+                    # find the scan motor position at center slice
+                    h5_dict[h5_dict['scanmot']] = h5_dict['scanmot_posns'][len(h5_dict['scanmot_posns'])//2]
 
             h5_dict[self.detectordist_mne] = info[f'instrument/{self.detector}/{self.detectordist_name}'][()]
 

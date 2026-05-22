@@ -107,16 +107,16 @@ class aps7Detector(Detector):
         ordered_frames = [ut.read_tif(slices_files[key]) for key in ordered_keys]
 
         data = np.stack(ordered_frames, axis=-1)
+        offset = [0, 0]
 
         if self.roi is not None:
-            data = self.get_roi_slice(data)
-
+            data, offset = self.get_roi_slice(data)
         data = self.correct(data)
 
         if self.max_crop is not None:
-            data = self.get_max_crop_slice(data)
+            data, offset = self.get_max_crop_slice(data, offset)
 
-        return data
+        return data, offset
 
 
     @abstractmethod
@@ -144,12 +144,14 @@ class Detector_7iddrobot(aps7Detector):
     Subclass of Detector. Encapsulates "34idcTIM1" detector.
     """
     name = "7iddrobot"
-    #dims = [1062, 1028]
+    dims = (1062,1028)
+    det_roi = [0, 1062, 0, 1028]
     pixel = (75.0e-6, 75e-6)
     pixelorientation = ('y+', 'x+')  # in xrayutilities notation
     darkfield = None
     data_dir = None
     Imult = 1.0
+    beam_zero = [dims[0] // 2, dims[1] // 2]
 
     def __init__(self, params):
         super(Detector_7iddrobot, self).__init__(params)

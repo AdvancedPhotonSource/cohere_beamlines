@@ -49,8 +49,13 @@ class Instrument:
     def get_scan_array(self, scan_node):
         return self.det_obj.get_scan_array(scan_node)
 
+    def get_RSM(self, scan):
+        return self.diff_obj.get_RSM(scan, self.det_obj)
 
-    def get_geometry(self, shape, scan, conf_maps):
+    def get_pixelQ(self, pixel, scan):
+        return self.diff_obj.get_pixelQ(pixel, scan, self.det_obj)
+
+    def get_geometry(self, max_ind, scan, conf_maps):
         """
         Calculates geometry based on diffractometer's and detctor's attributes and experiment parameters.
 
@@ -72,7 +77,7 @@ class Instrument:
         # get needed parameters into one flat dict
         conf_params = conf_maps['config_instr']
         conf_params['binning'] = conf_maps['config_data'].get('binning', [1,1,1])
-        return self.diff_obj.get_geometry(shape, scan, conf_params, det)
+        return self.diff_obj.get_geometry(max_ind, scan, conf_params, self.det_obj)
 
 
 def create_instr(configs, **kwargs):
@@ -113,10 +118,9 @@ def create_instr(configs, **kwargs):
 
     diff_obj = diff.create_diffractometer(diffractometer, config_params)
 
-    if 'need_detector' in kwargs:
-        if 'config_prep' in configs:
-            config_params.update(configs['config_prep'])
-        det_obj = det.create_detector(detector, config_params)
+    if 'config_prep' in configs:
+        config_params.update(configs['config_prep'])
+    det_obj = det.create_detector(detector, config_params)
 
     instr = Instrument(diff_obj, det_obj, detector)
 

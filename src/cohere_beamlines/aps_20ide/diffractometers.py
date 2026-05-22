@@ -28,7 +28,7 @@ class Diffractometer_20ide(Diffractometer):
 
 
     def __init__(self, params):
-        super(Diffractometer_20ide, self).__init__()
+        super(Diffractometer_20ide, self).__init__(params)
         self.data_dir = params.get('data_dir', None)
 
 
@@ -84,10 +84,7 @@ class Diffractometer_20ide(Diffractometer):
         scanmot = self.sampleaxes_mne[0]
         h5_dict['scanmot'] = scanmot
         try:
-            scanmot_arr = h5f[f'SMS/E/HR/{scanmot}'][:]
-            # scanmot is an array
-            h5_dict[scanmot] = scanmot_arr[0]
-            h5_dict['scanmot_del'] = scanmot_arr[1] - scanmot_arr[0]
+            h5_dict['scanmot_posns'] = h5f[f'SMS/E/HR/{scanmot}'][:]
         except:
             pass
         for mot_mne in self.detectoraxes_mne:

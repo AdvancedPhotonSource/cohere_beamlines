@@ -56,18 +56,18 @@ class esrf1Detector(Detector):
         with h5py.File(self.h5file, "r") as h5f:
             data = h5f[node][:].T
 
-        # # print max
-        print('shape, max coordinates, max value', data.shape, np.unravel_index(np.argmax(data), data.shape), np.max(data))
         # apply correction if needed
         # the rdata already is corrected
 
+        offset = [0, 0]
+
         if self.roi is not None:
-            data = self.get_roi_slice(data)
+            data, offset = self.get_roi_slice(data)
 
         if self.max_crop is not None:
-            data = self.get_max_crop_slice(data)
+            data, offset = self.get_max_crop_slice(data, offset)
 
-        return data
+        return data, offset
 
 
 class Detector_mpxgaas(esrf1Detector):
@@ -75,10 +75,11 @@ class Detector_mpxgaas(esrf1Detector):
     Subclass of Detector. Encapsulates "mpxgaas" detector.
     """
     name = "mpxgaas"
-   # dims = (516, 516)
+    dims = (516, 516)
+    det_roi = [0, 516, 0, 516]
     pixel = (55.0e-6, 55e-6)
     pixelorientation = ('x-', 'y-')  # in xrayutilities notation
-
+    beam_zero = [dims[0] // 2, dims[1] // 2]
 
     def __init__(self, conf_params):
         super(Detector_mpxgaas, self).__init__(conf_params)

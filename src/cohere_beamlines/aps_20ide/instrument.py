@@ -40,8 +40,13 @@ class Instrument:
     def get_scan_array(self, scan_dir):
         return self.det_obj.get_scan_array(scan_dir)
 
+    def get_RSM(self, scan):
+        return self.diff_obj.get_RSM(scan, self.det_obj)
 
-    def get_geometry(self, shape, scan, conf_maps):
+    def get_pixelQ(self, pixel, scan):
+        return self.diff_obj.get_pixelQ(pixel, scan, self.det_obj)
+
+    def get_geometry(self, max_ind, scan, conf_maps):
         """
         Calculates geometry based on diffractometer's and detctor's attributes and experiment parameters.
 
@@ -66,7 +71,7 @@ class Instrument:
         # get needed parameters into one flat dict
         conf_params = conf_maps['config_instr']
         conf_params['binning'] = conf_maps['config_data'].get('binning', [1,1,1])
-        return self.diff_obj.get_geometry(shape, scan, conf_params, det)
+        return self.diff_obj.get_geometry(max_ind, scan, conf_params, self.det_obj)
 
 
 def create_instr(configs, **kwargs):
@@ -91,15 +96,14 @@ def create_instr(configs, **kwargs):
     if det_name is None:
         raise ValueError('detector name not configured and could not be parsed')
 
-    if  'need_detector' in kwargs and kwargs['need_detector']:
-        # set detector parameters to configured parameters in config_instr and processing
-        # parameters from config_prep
-        det_params = configs['config_instr']
-        if 'config_prep' in  configs:
-            det_params.update(configs['config_prep'])
-        # check for parameters, it will raise exception if not success
-        det.check_mandatory_params(det_name, det_params)
-        det_obj = det.create_detector(det_name, det_params)
+    # set detector parameters to configured parameters in config_instr and processing
+    # parameters from config_prep
+    det_params = configs['config_instr']
+    if 'config_prep' in  configs:
+        det_params.update(configs['config_prep'])
+    # check for parameters, it will raise exception if not success
+    det.check_mandatory_params(det_name, det_params)
+    det_obj = det.create_detector(det_name, det_params)
 
     diff_name = configs['config_instr'].get('diffractometer', None)
     if diff_name is None:

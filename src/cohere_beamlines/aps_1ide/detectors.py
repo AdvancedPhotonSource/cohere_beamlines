@@ -118,15 +118,16 @@ class aps1Detector(Detector):
         ordered_keys = sorted(list(frames_files.keys()))
         ordered_slices = [self.correct_frame(frames_files[k]) for k in ordered_keys]
 
-        arr = np.stack(ordered_slices, axis=-1)
+        data = np.stack(ordered_slices, axis=-1)
+        offset = [0, 0]
 
         if self.roi is not None:
-            arr = self.get_roi_slice(arr)
+            data, offset = self.get_roi_slice(data)
 
         if self.max_crop is not None:
-            arr = self.get_max_crop_slice(arr)
+            data, offset = self.get_max_crop_slice(data, offset)
 
-        return arr
+        return data, offset
 
 
     @abstractmethod
@@ -144,10 +145,12 @@ class ASI(aps1Detector):
     Subclass of Detector. Encapsulates any detector. Values are based on "34idcTIM2" detector.
     """
     name = "ASI"
-    #dims = (518, 518)
+    dims = (518, 518)
+    det_roi = (0, 518, 0, 518)
     pixel = (55.0e-6, 55e-6)
     pixelorientation = ('x+', 'y-')  # in xrayutilities notation
     whitefield = None
+    beam_zero = [dims[0] // 2, dims[1] // 2]
 
     def __init__(self, params):
         super(ASI, self).__init__(params)
@@ -209,11 +212,13 @@ class BSE(aps1Detector):
     Subclass of Detector. Encapsulates any detector. Values are based on "34idcTIM2" detector.
     """
     name = "BSE"
-#    dims = (4096, 4096)
+    dims = (4096, 4096)
+    det_roi = [0, 4096, 0, 4096]
     pixel = (7.8e-6, 7.8e-6)
     pixelorientation = ('x-', 'y-')  # in xrayutilities notation
     whitefield = None
-    darkfield=None
+    darkfield = None
+    beam_zero = [dims[0] // 2, dims[1] // 2]
 
     def __init__(self, params):
         super(BSE, self).__init__(params)

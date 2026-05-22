@@ -33,6 +33,7 @@ class Detector(ABC):
         self.max_crop = params.get('max_crop', None)
         self.min_frames = params.get('min_frames', 0)
         self.exclude_scans = params.get('exclude_scans', [])
+        self.beam_zero = params.get('beam_zero', self.beam_zero)
         # logic for removing bound background
         if self.name in self.det_bound_background:
             self.remove_band_background = params.get('remove_band_background', False)
@@ -68,15 +69,17 @@ class Detector(ABC):
         cropslice0 = slice(start_point_x, min(start_point_x + distance_x, shape[0]))
         cropslice1 = slice(start_point_y, min(start_point_y + distance_y, shape[1]))
 
+        offset = [start_point_x, start_point_y]
+
         if self.darkfield is not None:
             self.darkfield = self.darkfield[cropslice0, cropslice1]
         if self.whitefield is not None:
             self.whitefield = self.whitefield[cropslice0, cropslice1]
 
-        return data[cropslice0, cropslice1, :]
+        return data[cropslice0, cropslice1, :], offset
 
 
-    def get_max_crop_slice(self, data):
+    def get_max_crop_slice(self, data, offset):
         """
         Crops the data to the size of max_crop with the maximum in the center.
 
@@ -116,7 +119,22 @@ class Detector(ABC):
         mc1 = max_crop[1] // 2
         cropslice0 = slice(max(0, maxindx[0] - mc0), min(maxindx[0] + mc0, shape[0]))
         cropslice1 = slice(max(0, maxindx[1] - mc1), min(maxindx[1] + mc1, shape[1]))
-        return data[cropslice0, cropslice1, :]
+        offset[0] = offset[0] + max(0, maxindx[0] - mc0)
+        offset[1] = offset[1] + max(0, maxindx[1] - mc1)
+        return data[cropslice0, cropslice1, :], offset
+
+
+    def get_beamzero(self):
+        return self.beam_zero
+
+
+    def get_realpixelpos(self, pixel):
+        return pixel
+
+
+    # Could be overridden in detector class.
+    def get_det_roi(self):
+        return self.det_roi
 
 
     def remove_horizontal_band_background(self,

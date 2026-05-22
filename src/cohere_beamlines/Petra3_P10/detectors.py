@@ -84,13 +84,16 @@ class petra10Detector(Detector):
                 break
         data = self.correct(data)
         
+        offset = [0, 0]
+
         if self.roi is not None:
-            data = self.get_roi_slice(data)
+            data, offset = self.get_roi_slice(data)
 
         if self.max_crop is not None:
-            data = self.get_max_crop_slice(data)
+            data, offset = self.get_max_crop_slice(data, offset)
 
-        return data
+        return data, offset
+
 
     @abstractmethod
     def correct(self, data):
@@ -112,6 +115,8 @@ class Detector_e4m(petra10Detector):
     darkfield = None
     data_dir = None
     Imult = 1.0
+    beam_zero = [1035, 1080]
+    dims = [2070, 2160]
 
     ROIS = {0: (0, 0, 2070, 2160), 1: (0, 0, 1030, 514), 2: (0, 550, 1030, 1065), 3: (0, 1100, 1030, 1616),
             4: (0, 1650, 1030, 2160), 5: (1040, 0, 2070, 514), 6: (1040, 550, 2070, 1065),
@@ -139,6 +144,8 @@ class Detector_e4m(petra10Detector):
                 self.darkfield[np.s_[c + 256 - 2:c + 256 + 2], :] = 0
 
         r = self.ROIS[params.get('detector_module', 0)]
+        self.det_roi = [r[0], r[2], r[1], r[3]]
+        self.beam_zero = params.get('beam_zero', [(r[2] - r[0]) // 2 + r[0], (r[3] - r[1]) // 2 + r[1]])
         self.slice = np.s_[:, r[1]:r[3], r[0]:r[2]]
         self.darkfield = self.darkfield[np.s_[r[1]:r[3], r[0]:r[2]]]
         self.darkfield = self.darkfield.T
@@ -199,8 +206,9 @@ class Detector_e2500(petra10Detector):
     asic_x = (256, 515, 773)
     module_x = [0]
     module_y = [0]
+    dims = (1028, 512)
     ROIS = {0: (0, 0, 1028, 512)}
-    
+    beam_zero = [dims[0] // 2, dims[1] // 2]
 
     bad_pix = np.array([[67, 512],
                         [67, 513],
@@ -226,6 +234,7 @@ class Detector_e2500(petra10Detector):
         self.data_dir = params.get('data_dir')
         self.sample = params.get('sample')
         r = self.ROIS[params.get('detector_module', 0)]
+        self.det_roi = [r[0], r[2], r[1], r[3]]
         self.slice = np.s_[:, r[1]:r[3], r[0]:r[2]]
         if 'darkfield_filename' in params:
             mask = np.load(params['darkfield_filename'])

@@ -114,6 +114,8 @@ class InstrTab(QWidget):
         gen_layout = QFormLayout()
         self.detector_button = QLineEdit()
         gen_layout.addRow("detector name", self.detector_button)
+        self.beam_zero = QLineEdit()
+        gen_layout.addRow("beam zero position [x, y]", self.beam_zero)
         self.diffractometer = QLineEdit()
         gen_layout.addRow("diffractometer", self.diffractometer)
         self.h5file_button = QPushButton()
@@ -155,6 +157,9 @@ class InstrTab(QWidget):
             self.detector_button.setText(conf_map['detector'])
         else:
             self.detector_button.setText('')
+        if 'beam_zero' in conf_map:
+            self.beam_zero.setText(str(conf_map['beam_zero']).replace(" ", ""))
+            self.beam_zero.setStyleSheet('color: black')
         if 'diffractometer' in conf_map:
             diff = str(conf_map['diffractometer']).replace(" ", "")
             self.diffractometer.setText(diff)
@@ -190,6 +195,7 @@ class InstrTab(QWidget):
 
     def clear_conf(self):
         self.detector_button.setText('')
+        self.beam_zero.setText('')
         self.diffractometer.setText('')
         self.h5file_button.setText('')
 
@@ -227,6 +233,8 @@ class InstrTab(QWidget):
         conf_map = {}
         if len(self.detector_button.text()) > 0:
             conf_map['detector'] = str(self.detector_button.text()).strip()
+        if len(self.beam_zero.text()) > 0:
+            conf_map['beam_zero'] = ast.literal_eval(str(self.beam_zero.text()).replace(os.linesep,''))
         if len(self.diffractometer.text()) > 0:
             conf_map['diffractometer'] = str(self.diffractometer.text())
         if len(self.h5file_button.text()) > 0:

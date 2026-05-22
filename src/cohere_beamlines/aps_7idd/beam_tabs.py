@@ -369,6 +369,8 @@ class InstrTab(QWidget):
         gen_layout.addRow("darkfield file", self.dark_file_button)
         self.white_file_button = QPushButton()
         gen_layout.addRow("whitefield file", self.white_file_button)
+        self.beam_zero = QLineEdit()
+        gen_layout.addRow("beam zero position [x, y]", self.beam_zero)
         self.Imult = QLineEdit()
         gen_layout.addRow("Imult", self.Imult)
         tab_layout.addLayout(gen_layout)
@@ -447,6 +449,10 @@ class InstrTab(QWidget):
             self.white_file_button.setText('')
         if 'Imult' in conf_map:
             self.Imult.setText(str(conf_map['Imult']).replace(" ", ""))
+
+        if 'beam_zero' in conf_map:
+            self.beam_zero.setText(str(conf_map['beam_zero']).replace(" ", ""))
+            self.beam_zero.setStyleSheet('color: black')
 
         if self.add_config:
             self.extended.load_tab(conf_map)
@@ -537,6 +543,7 @@ class InstrTab(QWidget):
         self.dark_file_button.setText('')
         self.white_file_button.setText('')
         self.Imult.setText('')
+        self.beam_zero.setText('')
         if self.add_config:
             self.extended.clear_conf()
 
@@ -584,6 +591,8 @@ class InstrTab(QWidget):
             conf_map['whitefield_filename'] = str(self.white_file_button.text().strip())
         if len(self.Imult.text()) > 0:
             conf_map['Imult'] = ast.literal_eval(str(self.Imult.text()).replace(os.linesep,''))
+        if len(self.beam_zero.text()) > 0:
+            conf_map['beam_zero'] = ast.literal_eval(str(self.beam_zero.text()).replace(os.linesep,''))
 
         if self.add_config:
             conf_map.update(self.extended.get_instr_config())
