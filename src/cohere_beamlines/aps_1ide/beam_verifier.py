@@ -30,8 +30,7 @@ config_disp_error = {'File':['No configuration file',
                              'crop should be a list of int or float'],
                      'Rampups':['rampups should be int']}
 
-config_instr_error = { 'Diffractometer':['missing mandatory diffractometer parameter',
-                                         'diffractometer parameter should be string'],
+config_instr_error = {
                        'Specfile': ['missing specfile parameter, configuration parameters will be used',
                                     'specfile parameter should be string',
                                     'specfile parameter parsing error'],
@@ -199,15 +198,6 @@ def ver_config_disp(config_map):
             config_error = 0
             error_message = get_config_error_message(fname, config_map_file, config_parameter, config_error)
             print('results_dir parameter should be string')
-            return (error_message)
-
-    config_parameter = 'Diffractometer'
-    if 'diffractometer' in config_map:
-        diffractometer = config_map['diffractometer']
-        if type(diffractometer) != str:
-            config_error = 0
-            error_message = get_config_error_message(fname, config_map_file, config_parameter, config_error)
-            print('diffractometer parameter should be string')
             return (error_message)
 
     config_parameter = 'Detector'

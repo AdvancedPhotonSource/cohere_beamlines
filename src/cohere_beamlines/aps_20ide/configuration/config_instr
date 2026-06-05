@@ -1,4 +1,3 @@
-diffractometer = "20ide"
 detector = "ASI"
 // if detector is BSE the following three parameters apply
 remove_band_background = True

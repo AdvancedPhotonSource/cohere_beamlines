@@ -2,10 +2,6 @@ specfile = "SPECFILE"
                                             // optional (but typically needed)
                                             // specfile can be specified on the command line argument to setup_34idc.py or here.
 
-diffractometer = "34idc"
-                           // it typically will be set to a defined class, but in case of new diffractometer
-                           // one can enter the parameters below instead
-
 data_dir = "ADDATADIR"
                                             // The directory containing raw data. This directory will have several
                                             // subdirectories each containing .tif data files. Each subdirectory
@@ -44,4 +40,3 @@ whitefield_filename = "WHITEFIELD"
 //chi = 90.0
 //phi = -5.0
 //scanmot = "th"
-//scanmot_del = 0.005

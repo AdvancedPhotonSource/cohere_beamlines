@@ -4,12 +4,12 @@
 # See LICENSE file.                                                       #
 # #########################################################################
 
-import cohere_beamlines.aps_34idc.diffractometers as diff
+from cohere_beamlines.aps_34idc.diffractometers import Diffractometer
 import cohere_beamlines.aps_34idc.detectors as det
 from cohere_beamlines.common.instr import Instrument
 from xrayutilities.io import spec
 
-def parse_spec4roi(specfile, scan):
+def parse_detector(specfile, scan):
     """
     Returns detector name and detector area parsed from spec file for given scan.
 
@@ -55,14 +55,101 @@ class Instrument_aps_34idc(Instrument):
       This class encapsulates istruments: diffractometer and detector used for that experiment.
       It provides interface to get the classes encapsulating the diffractometer and detector.
     """
-    def __init__(self, det_obj, diff_obj, main_conf):
+    def __init__(self, det_obj, diff_obj, conf_params):
         """
         Constructor
 
         :param det_obj: detector object, can be None
         :param diff_obj: diffractometer object, can be None
         """
-        super(Instrument_aps_34idc, self).__init__(det_obj, diff_obj, main_conf)
+        super(Instrument_aps_34idc, self).__init__(det_obj, diff_obj, conf_params)
+
+
+    def parse_metadata(self, scan, **kwargs):
+        """
+        Reads parameters from spec file for given scan.
+
+        Parameters
+        ----------
+        scan : int
+            scan number to use to recover the saved measurements
+
+        Returns
+        -------
+        metadata
+        """
+        spec_dict = {}
+        if 'specfile' in kwargs:
+            specfile = kwargs['specfile']
+        else:
+            specfile = self.conf_params['config_instr']['specfile']
+        if specfile is None or scan is None:
+            return spec_dict
+
+        # Scan numbers start at one but the list is 0 indexed
+        try:
+            sf = spec.SPECFile(specfile)
+            ss = sf[scan - 1]
+        except Exception as ex:
+            print(str(ex))
+            print('Could not parse ' + specfile)
+            return spec_dict
+
+        try:
+            command = ss.command.split()
+            spec_dict['scanmot'] = command[1]
+        except:
+            pass
+
+        motmne_name_dict = {**dict(zip(self.diff_obj.sampleaxes_mne, self.diff_obj.sampleaxes_name)),
+                            **dict(zip(self.diff_obj.detectoraxes_mne, self.diff_obj.detectoraxes_name))}
+
+        for mot_mne, mot_name in motmne_name_dict.items():
+            try:
+                motname = "INIT_MOPO_{m}".format(m=mot_name)
+                spec_dict[mot_mne] = ss.init_motor_pos[motname]
+            except:
+                pass
+
+        try:
+            motname = "INIT_MOPO_{m}".format(m=self.diff_obj.detectordist_name)
+            spec_dict['detdist'] = ss.init_motor_pos[motname]
+        except:
+            pass
+
+        try:
+            spec_dict['scanmot_posns'] = spec.getspec_scan(sf, scan, motmne_name_dict[spec_dict['scanmot']])[0]
+        except Exception as ex:
+            print(str(ex))
+
+        try:
+            spec_dict['energy'] = ss.init_motor_pos['INIT_MOPO_Energy']
+        except:
+            pass
+
+        try:
+            spec_dict['detector'] = str(ss.getheader_element('UIMDET'))
+            if spec_dict['detector'].endswith(':'):
+                spec_dict['detector'] = spec_dict['detector'][:-1]
+        except Exception as ex:
+            print(str(ex))
+
+        try:
+            spec_dict['det_roi'] = [int(n) for n in ss.getheader_element('UIMR5').split()]
+        except Exception as ex:
+            print(str(ex))
+
+        return spec_dict
+
+
+    def convert_units(self, params):
+        """
+        Converts detectordist value from mm to m.
+        :return:
+        """
+
+        params[self.diff_obj.detectordist_mne] = params[self.diff_obj.detectordist_mne] / 1000.0  # convert to meters
+        return params
 
 
     def datainfo4scans(self):
@@ -75,46 +162,6 @@ class Instrument_aps_34idc(Instrument):
         list
         """
         return self.det_obj.dirs4scans(self.scan_ranges)
-
-
-    def get_scan_array(self, scan_dir):
-        return self.det_obj.get_scan_array(scan_dir)
-
-    def get_RSM(self, scan):
-        return self.diff_obj.get_RSM(scan, self.det_obj)
-
-    def get_pixelQ(self, pixel, scan):
-        return self.diff_obj.get_pixelQ(pixel, scan, self.det_obj)
-
-    def get_geometry(self, max_ind, scan, conf_maps, **kwargs):
-        """
-        Calculates geometry based on diffractometer's and detctor's attributes and experiment parameters.
-
-        For the aps_34idc typically the delta, gamma, theta, phi, chi, scanmot, scanmot_del,
-        detdist, detector_name, energy values are parsed from spec file.
-        They can be overridden by configuration.
-
-        Parameters
-        ----------
-        shape : tuple
-            shape of reconstructed array
-        scan : int or None
-            scan to use to parse experiment parameters
-        conf_params : configuration parameters, can contain delta, gamma, theta, phi, chi, scanmot, scanmot_del,
-        detdist, detector_name, energy.
-        kwargs:
-            xtal : boolean
-                request only reciprocal space geometry when True
-
-        Returns
-        -------
-        tuple
-            (Trecip, Tdir)
-        """
-        # get needed parameters into one flat dict
-        conf_params = conf_maps['config_instr']
-        conf_params['binning'] = conf_maps['config_data'].get('binning', [1,1,1])
-        return self.diff_obj.get_geometry(max_ind, scan, conf_params, self.det_obj, **kwargs)
 
 
 def create_instr(configs, **kwargs):
@@ -131,13 +178,13 @@ def create_instr(configs, **kwargs):
     (str, Object)
         error msg, Instrument object or None
     """
-    det_obj = None
-    det_params = {}
+    diff_obj = Diffractometer()
     scan_ranges = None
-
+    det_params = {}
     main_config_params = configs['config']
     instr_config_params = configs['config_instr']
 
+    # parse scans to be saved in instrument object
     scan = main_config_params.get('scan', None)
     if 'config_mp' in configs:
         scan = configs['config_mp'].get('scan', None)
@@ -154,39 +201,30 @@ def create_instr(configs, **kwargs):
             else:
                 scan_ranges.append([int(u), int(u)])
 
-        if 'specfile' in instr_config_params:
-            # detector name and roi is parsed from specfile if one exists
+        # parse detector name from metadata
+        if 'specfile' in instr_config_params and scan is not None:
+            # detector name is parsed from specfile if one exists
             # Find the first scan to parse detector params.
             first_scan = scan_ranges[0][0]
-            det_params = parse_spec4roi(instr_config_params.get('specfile'), first_scan)
+            det_params = parse_detector(instr_config_params.get('specfile'), first_scan)
 
-    # override det_params with configured values in params
     det_params.update(instr_config_params)
-    det_name = det_params.get('detector', None)
-    if det_name is None:
-        raise ValueError('detector name not configured and could not be parsed')
-
     if 'config_prep' in configs:
         det_params.update(configs['config_prep'])
+
+    # get detector name
+    detector = det_params.get('detector', None)
+    if detector is None:
+        raise ValueError('detector name not configured and could not be parsed')
     # check for parameters, it will raise exception if failed
-    det.check_mandatory_params(det_name, det_params)
+    det.check_mandatory_params(detector, det_params)
 
-    det_obj = det.create_detector(det_name, det_params)
+    det_obj = det.create_detector(detector, det_params)
     if det_obj is None:
-        msg = f'failed create {det_name} detector'
+        msg = f'failed create {detector} detector'
         raise ValueError(msg)
 
-    diff_name = instr_config_params.get('diffractometer', None)
-    if diff_name is None:
-        msg = 'diffractometer parameter not defined'
-        raise ValueError(msg)
-    else:
-        diff_obj = diff.create_diffractometer(diff_name, instr_config_params)
-        if diff_obj is None:
-            msg = f'failed create {diff_name} diffractometer'
-            raise ValueError(msg)
-
-    instr = Instrument_aps_34idc(det_obj, diff_obj, main_config_params)
+    instr = Instrument_aps_34idc(det_obj, diff_obj, configs)
     instr.scan_ranges = scan_ranges
 
     return instr

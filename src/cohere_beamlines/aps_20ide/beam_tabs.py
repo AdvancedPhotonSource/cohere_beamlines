@@ -9,7 +9,8 @@ from PyQt6.QtCore import *
 from PyQt6.QtWidgets import *
 import ast
 import cohere_core.utilities as ut
-import cohere_beamlines.aps_20ide.diffractometers as diff
+from cohere_beamlines.aps_20ide.diffractometers import Diffractometer
+from cohere_beamlines.aps_20ide.instrument import Instrument_aps_20ide
 from cohere_beamlines.common.det import Detector as det
 
 
@@ -196,26 +197,18 @@ class SubInstrTab():
             msg_window ('cannot parse metadata, scan not defined')
             return
 
-        diffractometer = self.instr_tab.diffractometer.text()
-        if len(diffractometer) == 0:
-            msg_window ('cannot parse metadata, diffractometer not defined')
-            return
-
         data_dir = self.instr_tab.data_dir_button.text()
         if len(data_dir) == 0:
             msg_window ('cannot parse metadata, data_dir not defined')
             return
 
-        try:
-            diff_obj = diff.create_diffractometer(diffractometer, {'data_dir' : data_dir})
-        except Exception as e:
-            msg_window (str(e))
-            return
-
-        last_scan = int(scan.split('-')[-1].split(',')[-1])
-        meta_dict = diff_obj.parse_metadata(last_scan)
+        diff_obj = Diffractometer()
+        instrument = Instrument_aps_20ide(None, diff_obj, None)
+        first_scan = int(scan.split('-')[0].split(',')[0])
+        meta_dict = instrument.parse_metadata(first_scan, data_dir=data_dir)
         if meta_dict is None:
             return
+
         if 'energy' in meta_dict:
             self.energy.setText(str(meta_dict['energy']))
             self.energy.setStyleSheet('color: blue')
@@ -275,8 +268,6 @@ class InstrTab(QWidget):
 
         tab_layout = QVBoxLayout()
         gen_layout = QFormLayout()
-        self.diffractometer = QLineEdit()
-        gen_layout.addRow("diffractometer", self.diffractometer)
         self.data_dir_button = QPushButton()
         gen_layout.addRow("data directory", self.data_dir_button)
         self.dark_file_button = QPushButton()
@@ -331,9 +322,6 @@ class InstrTab(QWidget):
         -------
         nothing
         """
-        if 'diffractometer' in conf_map:
-            diff = str(conf_map['diffractometer']).replace(" ", "")
-            self.diffractometer.setText(diff)
         if 'data_dir' in conf_map:
             if os.path.isdir(conf_map['data_dir']):
                 self.data_dir_button.setStyleSheet("Text-align:left")
@@ -467,7 +455,6 @@ class InstrTab(QWidget):
 
 
     def clear_conf(self):
-        self.diffractometer.setText('')
         self.data_dir_button.setText('')
         self.dark_file_button.setText('')
         self.white_file_button.setText('')
@@ -509,8 +496,6 @@ class InstrTab(QWidget):
             contains parameters read from window
         """
         conf_map = {}
-        if len(self.diffractometer.text()) > 0:
-            conf_map['diffractometer'] = str(self.diffractometer.text())
         if len(self.data_dir_button.text().strip()) > 0:
             conf_map['data_dir'] = str(self.data_dir_button.text()).strip()
         if len(self.dark_file_button.text().strip()) > 0:

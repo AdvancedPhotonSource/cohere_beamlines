@@ -1,6 +1,3 @@
-diffractometer = "P10sixc"
-                            // A diffractometer name that was used in the experiment. This diffractometer has
-                            // to be supported in this beamline diffractometers.py script
 sample = "MC7_insitu"
                               // Defines sample name that matches directory structure.
 data_dir = "example_data"
@@ -36,7 +33,5 @@ del = 30.1
                            // delta axis position (deg)
 scanmot = 'mu'
                            // scan motor
-scanmot_del = 0.005
-                           // scan motor delta
 detector = "e4m"
                            // detector name

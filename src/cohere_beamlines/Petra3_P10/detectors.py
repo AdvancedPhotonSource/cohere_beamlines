@@ -290,14 +290,6 @@ def create_detector(det_name, params):
    return dets[det_name](params)
 
 
-def get_pixel(det_name):
-    return dets[det_name].pixel
-
-
-def get_pixel_orientation(det_name):
-    return dets[det_name].pixelorientation
-
-
 def check_mandatory_params(det_name, params):
     return dets[det_name].check_mandatory_params(params)
 

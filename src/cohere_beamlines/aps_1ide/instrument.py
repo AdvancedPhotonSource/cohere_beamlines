@@ -4,25 +4,25 @@
 # See LICENSE file.                                                       #
 # #########################################################################
 
-import cohere_beamlines.aps_1ide.diffractometers as diff
+from cohere_beamlines.aps_1ide.diffractometers import Diffractometer
+from cohere_beamlines.common.instr import Instrument
 import cohere_beamlines.aps_1ide.detectors as det
+from xrayutilities.io import spec
 
 
-class Instrument:
+class Instrument_aps_1ide(Instrument):
     """
       This class encapsulates istruments: diffractometer and detector used for that experiment.
       It provides interface to get the classes encapsulating the diffractometer and detector.
     """
-
-    def __init__(self, det_obj, diff_obj):
+    def __init__(self, det_obj, diff_obj, conf_params):
         """
         Constructor
 
         :param det_obj: detector object, can be None
         :param diff_obj: diffractometer object, can be None
         """
-        self.det_obj = det_obj
-        self.diff_obj = diff_obj
+        super(Instrument_aps_1ide, self).__init__(det_obj, diff_obj, conf_params)
 
 
     def datainfo4scans(self):
@@ -41,38 +41,83 @@ class Instrument:
         return self.det_obj.get_scan_array(scan_dir)
 
 
-    def get_RSM(self, scan):
-        return self.diff_obj.get_RSM(scan, self.det_obj)
-
-    def get_pixelQ(self, pixel, scan):
-        return self.diff_obj.get_pixelQ(pixel, scan, self.det_obj)
-
-    def get_geometry(self, max_ind, scan, conf_maps):
+    def convert_units(self, params):
         """
-        Calculates geometry based on diffractometer's and detctor's attributes and experiment parameters.
+        Converts detectoraxes values from mm to m. The values are stored in params dict.
+        :return:
+        """
 
-        For the aps_34idc typically the delta, gamma, theta, phi, chi, scanmot, scanmot_del,
-        detdist, detector_name, energy values are parsed from spec file.
-        They can be overridden by configuration.
+        params[self.diff_obj.detectordist_mne] = params[self.diff_obj.detectordist_mne] / 1000.0  # convert to meters
+        params['vff_r'] = params['vff_r'] / 1000 + params['vff_r_offset']
+        return params
+
+
+    def parse_metadata(self, scan, **kwargs):
+        """
+        Reads parameters from spec file for given scan.
 
         Parameters
         ----------
-        shape : tuple
-            shape of reconstructed array
         scan : int
-            scan to use to parse experiment parameters
-        conf_params : dict
-            reflect configuration, and can contain values of diffractometer parameters at the specific scan.
+            scan number to use to recover the saved measurements
 
         Returns
         -------
-        tuple
-            (Trecip, Tdir)
+        dict with metadata
         """
-        # get needed parameters into one flat dict
-        conf_params = conf_maps['config_instr']
-        conf_params['binning'] = conf_maps['config_data'].get('binning', [1,1,1])
-        return self.diff_obj.get_geometry(max_ind, scan, conf_params, self.det_obj)
+        spec_dict = {}
+        if 'specfile' in kwargs:
+            specfile = kwargs['specfile']
+        else:
+            specfile = self.conf_params['config_instr'].get('specfile', None)
+        if specfile is None:
+            # return empty dir
+            return spec_dict
+
+        # Scan numbers start at one but the list is 0 indexed
+        try:
+            sf = spec.SPECFile(specfile)
+            ss = sf[scan - 1]
+        except Exception as ex:
+            print(str(ex))
+            print('Could not parse ' + specfile)
+            return None
+
+        try:
+            command = ss.command.split()
+            spec_dict['scanmot'] = command[1]
+        except:
+            pass
+
+        motmne_name_dict = {**dict(zip(self.diff_obj.sampleaxes_mne, self.diff_obj.sampleaxes_name)),
+                            **dict(zip(self.diff_obj.detectoraxes_mne, self.diff_obj.detectoraxes_name))}
+
+        for mot_mne, mot_name in motmne_name_dict.items():
+            try:
+                motname = "INIT_MOPO_{m}".format(m=mot_name)
+                spec_dict[mot_mne] = ss.init_motor_pos[motname]
+            except:
+                print("failed from spec", mot_mne, mot_name)
+
+        try:
+            motname = "INIT_MOPO_{m}".format(m=self.diff_obj.detectordist_name)
+            spec_dict['detdist'] = ss.init_motor_pos[motname]
+        except:
+            pass
+
+        try:
+            spec_dict['scanmot_posns'] = spec.getspec_scan(sf, scan, motmne_name_dict[spec_dict['scanmot']])[0]
+        except Exception as ex:
+            print(str(ex))
+
+        try:
+            spec_dict['detector'] = str(ss.getheader_element('UIMDET'))
+            if spec_dict['detector'].endswith(':'):
+                spec_dict['detector'] = spec_dict['detector'][:-1]
+        except Exception as ex:
+            print(str(ex))
+
+        return spec_dict
 
 
 def create_instr(configs, **kwargs):
@@ -90,7 +135,7 @@ def create_instr(configs, **kwargs):
         error msg, Instrument object or None
     """
     det_obj = None
-    diff_obj = None
+    diff_obj = Diffractometer()
     main_config_params = configs['config']
 
     det_name = configs['config_instr'].get('detector', None)
@@ -106,13 +151,7 @@ def create_instr(configs, **kwargs):
     det.check_mandatory_params(det_name, det_params)
     det_obj = det.create_detector(det_name, det_params)
 
-    diff_name = configs['config_instr'].get('diffractometer', None)
-    if diff_name is None:
-        raise ValueError('diffractometer parameter not defined')
-    else:
-        diff_obj = diff.create_diffractometer(diff_name, configs['config_instr'])
-
-    instr = Instrument(det_obj, diff_obj)
+    instr = Instrument_aps_1ide(det_obj, diff_obj, configs)
     # set scan ranges in instrument class
     scan_ranges = None
     scan = main_config_params.get('scan', None)

@@ -3,26 +3,108 @@
 #                                                                         #
 # See LICENSE file.                                                       #
 # #########################################################################
-
-import cohere_beamlines.aps_20ide.diffractometers as diff
+import os
+import h5py
+from cohere_beamlines.aps_20ide.diffractometers import Diffractometer
 import cohere_beamlines.aps_20ide.detectors as det
+from cohere_beamlines.common.instr import Instrument
+import cohere_core.utilities as ut
 
 
-class Instrument:
+class Instrument_aps_20ide(Instrument):
     """
       This class encapsulates istruments: diffractometer and detector used for that experiment.
       It provides interface to get the classes encapsulating the diffractometer and detector.
     """
 
-    def __init__(self, det_obj, diff_obj):
+    def __init__(self, det_obj, diff_obj, conf_params):
         """
         Constructor
 
         :param det_obj: detector object, can be None
         :param diff_obj: diffractometer object, can be None
         """
-        self.det_obj = det_obj
-        self.diff_obj = diff_obj
+        super(Instrument_aps_20ide, self).__init__(det_obj, diff_obj, conf_params)
+
+
+    def convert_units(self, params):
+        """
+        Converts detectoraxes values from mm to m. The values are stored in params dict.
+        :return:
+        """
+
+        for ax in self.diff_obj.detectoraxes_mne:
+            params[ax] = params[ax] / 1000
+        return params
+
+
+    def parse_metadata(self, scan, **kwargs):
+        """
+        Reads parameters from h5 file for given scan.
+
+        Parameters
+        ----------
+        h5file : str
+            h5 file name
+
+        scan : int
+            scan number to use to recover the saved measurements
+
+        diff : object
+            diffractometer object
+
+        Returns
+        -------
+        dict with VFF_ETA, VFF_R, scanmot, DetZ, detector_name, energy
+        """
+        h5_dict = {}
+        if 'data_dir' in kwargs:
+            data_dir = kwargs['data_dir']
+        else:
+            params = self.conf_params['config_instr']
+            data_dir = params['data_dir']
+        print('data dir', data_dir)
+        # find the file by scan number
+        for scanfile in sorted(os.listdir(data_dir)):
+            scanfile_full_path = ut.join(data_dir, scanfile)
+            if not os.path.isfile(scanfile_full_path) or not scanfile_full_path.endswith('.h5'):
+                continue
+            # chop off the ".h5" and get the scan number
+            try:
+                # read_scan = int(scanfile[:-3].split('_')[-1])
+                # The format is xxx_ddd.detectorname.h5
+                read_scan = int(scanfile.split('.')[0].split('_')[-1])
+            except:
+                continue
+            if read_scan == scan:
+                h5file = scanfile_full_path
+                break
+
+        h5f = h5py.File(h5file)
+        scanmot = self.diff_obj.sampleaxes_mne[0]
+        h5_dict['scanmot'] = scanmot
+        try:
+            h5_dict['scanmot_posns'] = h5f[f'SMS/E/HR/{scanmot}'][:]
+        except:
+            pass
+        for mot_mne in self.diff_obj.detectoraxes_mne:
+            try:
+                h5_dict[mot_mne] = h5f[f'DMS/{mot_mne}'][0]
+            except:
+                pass
+        # detectordist_mne is the same as detectoraxes_mne[0]
+        # try:
+        #     h5_dict[self.detectordist_mne] = h5f[f'DMS/{self.detectordist_name}'][0]
+        # except:
+        #     pass
+        try:
+            h5_dict['energy'] = h5f['HEM/Energy'][0]
+        except Exception as ex:
+            # print(f"{__name__}: {ex}")
+            pass
+
+        h5f.close()
+        return h5_dict
 
 
     def datainfo4scans(self):
@@ -40,39 +122,6 @@ class Instrument:
     def get_scan_array(self, scan_dir):
         return self.det_obj.get_scan_array(scan_dir)
 
-    def get_RSM(self, scan):
-        return self.diff_obj.get_RSM(scan, self.det_obj)
-
-    def get_pixelQ(self, pixel, scan):
-        return self.diff_obj.get_pixelQ(pixel, scan, self.det_obj)
-
-    def get_geometry(self, max_ind, scan, conf_maps):
-        """
-        Calculates geometry based on diffractometer's and detctor's attributes and experiment parameters.
-
-        For the aps_34idc typically the delta, gamma, theta, phi, chi, scanmot, scanmot_del,
-        detdist, detector_name, energy values are parsed from spec file.
-        They can be overridden by configuration.
-
-        Parameters
-        ----------
-        shape : tuple
-            shape of reconstructed array
-        scan : int
-            scan to use to parse experiment parameters
-        conf_params : dict
-            reflect configuration, and can contain values of diffractometer parameters at the specific scan.
-
-        Returns
-        -------
-        tuple
-            (Trecip, Tdir)
-        """
-        # get needed parameters into one flat dict
-        conf_params = conf_maps['config_instr']
-        conf_params['binning'] = conf_maps['config_data'].get('binning', [1,1,1])
-        return self.diff_obj.get_geometry(max_ind, scan, conf_params, self.det_obj)
-
 
 def create_instr(configs, **kwargs):
     """
@@ -89,7 +138,7 @@ def create_instr(configs, **kwargs):
         error msg, Instrument object or None
     """
     det_obj = None
-    diff_obj = None
+    diff_obj = Diffractometer()
     main_config_params = configs['config']
 
     det_name = configs['config_instr'].get('detector', None)
@@ -105,13 +154,7 @@ def create_instr(configs, **kwargs):
     det.check_mandatory_params(det_name, det_params)
     det_obj = det.create_detector(det_name, det_params)
 
-    diff_name = configs['config_instr'].get('diffractometer', None)
-    if diff_name is None:
-        raise ValueError('diffractometer parameter not defined')
-    else:
-        diff_obj = diff.create_diffractometer(diff_name, configs['config_instr'])
-
-    instr = Instrument(det_obj, diff_obj)
+    instr = Instrument_aps_20ide(det_obj, diff_obj, configs)
     # set scan ranges in instrument class
     scan_ranges = None
     scan = main_config_params.get('scan', None)

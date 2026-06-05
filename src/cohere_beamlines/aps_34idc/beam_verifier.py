@@ -16,8 +16,7 @@ __docformat__ = 'restructuredtext en'
 __all__ = ['verify']
 
 
-config_instr_error = { 'Diffractometer':['missing mandatory diffractometer parameter',
-                                         'diffractometer parameter should be string'],
+config_instr_error = {
                        'Specfile': ['missing specfile parameter. The program will use detector configured in config_instr and roi in config_prep',
                                     'specfile parameter should be string',
                                     'specfile parameter parsing error'],
@@ -169,20 +168,6 @@ def ver_config_instr(config_map):
     """
     config_map_file = 'config_instr_error_map_file'
     fname = 'config_instr'
-
-    config_parameter = 'Diffractometer'
-    if 'diffractometer' in config_map:
-        diffractometer = config_map['diffractometer']
-        if type(diffractometer) != str:
-            config_error = 1
-            error_message = get_config_error_message(fname, config_map_file, config_parameter, config_error)
-            print(error_message)
-            return (error_message)
-    else:
-        config_error = 0
-        error_message = get_config_error_message(fname, config_map_file, config_parameter, config_error)
-        print(error_message)
-        return ''  # in some cases the parameters might be given
 
     config_parameter = 'Specfile'
     if 'specfile' in config_map:

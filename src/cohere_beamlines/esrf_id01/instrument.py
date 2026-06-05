@@ -4,34 +4,78 @@
 # See LICENSE file.                                                       #
 # #########################################################################
 
-import cohere_beamlines.esrf_id01.diffractometers as diff
+from cohere_beamlines.esrf_id01.diffractometers import Diffractometer
 import cohere_beamlines.esrf_id01.detectors as det
+from cohere_beamlines.common.instr import Instrument
 import os
+import h5py
 
 
-class Instrument:
+class Instrument_esrf_id01(Instrument):
     """
       This class encapsulates istruments: diffractometer and detector used for that experiment.
       It provides interface to get the classes encapsulating the diffractometer and detector.
     """
-
-    def __init__(self, diff_obj, det_obj, detector):
+    def __init__(self, det_obj, diff_obj, conf_params):
         """
-        The constructor.
+        Constructor
+
+        :param det_obj: detector object, can be None
+        :param diff_obj: diffractometer object, can be None
+        """
+        super(Instrument_esrf_id01, self).__init__(det_obj, diff_obj, conf_params)
+
+
+    def parse_metadata(self, scan):
+        """
+        Reads parameters from h5 file for given scan.
 
         Parameters
         ----------
-        params : dict
-            <param name> : <param value>
+        h5file : str
+            h5 file name
+
+        scan : int
+            scan number to use to recover the saved measurements
+
+        diff : object
+            diffractometer object
 
         Returns
         -------
-        str
-            a string containing error message or empty
+        dict with delta, gamma, theta, phi, chi, scanmot, scanmot_del, detdist, detector_name, energy
         """
-        self.diff_obj = diff_obj
-        self.det_obj = det_obj
-        self.detector = detector
+        params = self.conf_params['config_instr']
+        h5_dict = {}
+
+        # Scan numbers start at one but the list is 0 indexed
+        h5f = h5py.File(params['h5file'])
+        info = h5f[f"{scan}.1"]
+
+        try:
+            h5_dict['detector'] = params['detector']
+            command = info['title'].asstr()[()].split(" ")
+            if command[0] in ("ascan", "a2scan", "a3scan"):
+                h5_dict['scanmot'] = command[1]
+            else:
+                raise IOError(f"{__name__}: Unknown scan type: {command[0]}")
+            for mot_mne in self.diff_obj.sampleaxes_mne + self.diff_obj.detectoraxes_mne:
+                if mot_mne != h5_dict['scanmot']:
+                    h5_dict[mot_mne] = info[f'instrument/positioners/{mot_mne}'][()]
+                else:
+                    h5_dict['scanmot_posns'] = info[f'instrument/positioners/{mot_mne}'][()]
+                    # find the scan motor position at center slice
+                    h5_dict[h5_dict['scanmot']] = h5_dict['scanmot_posns'][len(h5_dict['scanmot_posns'])//2]
+
+            h5_dict[self.diff_obj.detectordist_mne] = info[f'instrument/{params["detector"]}/{self.diff_obj.detectordist_name}'][()]
+
+            h5_dict['energy'] = info['instrument/monochromator/Energy'][()]
+        except Exception as ex:
+            print(f"{__name__}: {ex}")
+            raise ex
+        h5f.close()
+
+        return h5_dict
 
 
     def datainfo4scans(self):
@@ -49,36 +93,6 @@ class Instrument:
     def get_scan_array(self, scan_node):
         return self.det_obj.get_scan_array(scan_node)
 
-    def get_RSM(self, scan):
-        return self.diff_obj.get_RSM(scan, self.det_obj)
-
-    def get_pixelQ(self, pixel, scan):
-        return self.diff_obj.get_pixelQ(pixel, scan, self.det_obj)
-
-    def get_geometry(self, max_ind, scan, conf_maps):
-        """
-        Calculates geometry based on diffractometer's and detctor's attributes and experiment parameters.
-
-        Parameters
-        ----------
-        shape : tuple
-            shape of reconstructed array
-        scan : scan number for which the geometry is calculated
-        params : reflect configuration
-
-        Returns
-        -------
-        tuple
-            (Trecip, Tdir)
-        """
-        if self.diff_obj is None:
-            raise RuntimeError
-
-        # get needed parameters into one flat dict
-        conf_params = conf_maps['config_instr']
-        conf_params['binning'] = conf_maps['config_data'].get('binning', [1,1,1])
-        return self.diff_obj.get_geometry(max_ind, scan, conf_params, self.det_obj)
-
 
 def create_instr(configs, **kwargs):
     """
@@ -94,6 +108,7 @@ def create_instr(configs, **kwargs):
     (str, Object)
         error msg, Instrument object or None
     """
+    diff_obj = Diffractometer()
     det_obj = None
 
     config_params = configs['config_instr']
@@ -111,18 +126,11 @@ def create_instr(configs, **kwargs):
         msg = 'detector must be provided to create Instrument for esrf_id01 beamline'
         raise ValueError(msg)
 
-    diffractometer = config_params.get('diffractometer', None)
-    if diffractometer is None:
-        msg = 'diffractometer must be provided to create Instrument for esrf_id01 beamline'
-        raise ValueError(msg)
-
-    diff_obj = diff.create_diffractometer(diffractometer, config_params)
-
     if 'config_prep' in configs:
         config_params.update(configs['config_prep'])
     det_obj = det.create_detector(detector, config_params)
 
-    instr = Instrument(diff_obj, det_obj, detector)
+    instr = Instrument_esrf_id01(det_obj, diff_obj, configs)
 
     scan = configs['config'].get('scan', None)
     if scan is not None:

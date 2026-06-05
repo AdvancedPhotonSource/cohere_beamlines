@@ -11,6 +11,7 @@ import ast
 import cohere_core.utilities as ut
 import cohere_beamlines.Petra3_P10.beam_verifier as ver
 import cohere_beamlines.Petra3_P10.diffractometers as diff
+import cohere_beamlines.Petra3_P10.instrument as instr
 
 
 def msg_window(text):
@@ -123,8 +124,6 @@ class SubInstrTab():
         fio_layout.addRow("phi (deg)", self.phi)
         self.scanmot = QLineEdit()
         fio_layout.addRow("scan motor", self.scanmot)
-        self.scanmot_del = QLineEdit()
-        fio_layout.addRow("scan motor delta", self.scanmot_del)
         self.detector = QLineEdit()
         fio_layout.addRow("detector", self.detector)
 
@@ -137,7 +136,6 @@ class SubInstrTab():
         self.chi.textChanged.connect(lambda: set_overriden(self.chi))
         self.phi.textChanged.connect(lambda: set_overriden(self.phi))
         self.scanmot.textChanged.connect(lambda: set_overriden(self.scanmot))
-        self.scanmot_del.textChanged.connect(lambda: set_overriden(self.scanmot_del))
         self.detector.textChanged.connect(lambda: set_overriden(self.detector))
 
 
@@ -182,9 +180,6 @@ class SubInstrTab():
         if 'scanmot' in conf_map:
             self.scanmot.setText(str(conf_map['scanmot']).replace(" ", ""))
             self.scanmot.setStyleSheet('color: black')
-        if 'scanmot_del' in conf_map:
-            self.scanmot_del.setText(str(conf_map['scanmot_del']).replace(" ", ""))
-            self.scanmot_del.setStyleSheet('color: black')
         if 'detector' in conf_map:
             self.detector.setText(str(conf_map['detector']).replace(" ", ""))
             self.detector.setStyleSheet('color: black')
@@ -200,7 +195,6 @@ class SubInstrTab():
         self.chi.setText('')
         self.phi.setText('')
         self.scanmot.setText('')
-        self.scanmot_del.setText('')
         self.detector.setText('')
 
 
@@ -234,8 +228,6 @@ class SubInstrTab():
             conf_map['phi'] = ast.literal_eval(str(self.phi.text()))
         if len(self.scanmot.text()) > 0:
             conf_map['scanmot'] = str(self.scanmot.text())
-        if len(self.scanmot_del.text()) > 0:
-            conf_map['scanmot_del'] = ast.literal_eval(str(self.scanmot_del.text()))
         if len(self.detector.text()) > 0:
             conf_map['detector'] = str(self.detector.text())
 
@@ -259,9 +251,10 @@ class SubInstrTab():
             msg_window ('cannot parse fio, scan not defined')
             return
 
-        diffractometer = self.instr_tab.diffractometer.text()
-        if len(diffractometer) == 0:
-            msg_window ('cannot parse fio, diffractometer not defined')
+        try:
+            diff_obj = diff.Diffractometer()
+        except Exception as e:
+            msg_window (str(e))
             return
 
         data_dir = self.instr_tab.data_dir_button.text()
@@ -274,15 +267,10 @@ class SubInstrTab():
             msg_window ('sample not defined')
             return
 
-        try:
-            params = {'data_dir' : data_dir, 'sample' : sample}
-            diff_obj = diff.create_diffractometer(diffractometer, params)
-        except:
-            msg_window ('cannot create diffractometer', diffractometer)
-            return
+        instrument = instr.Instrument_Petra3_P10(None, diff_obj, None)
 
-        last_scan = int(scan.split('-')[-1].split(',')[-1])
-        fio_dict = diff_obj.parse_metadata(last_scan)
+        first_scan = int(scan.split('-')[0].split(',')[0])
+        fio_dict = instrument.parse_metadata(first_scan, data_dir=data_dir, sample=sample)
         if fio_dict is None:
             return
         if 'energy' in fio_dict:
@@ -312,9 +300,6 @@ class SubInstrTab():
         if 'scanmot' in fio_dict:
             self.scanmot.setText(str(fio_dict['scanmot']))
             self.scanmot.setStyleSheet('color: blue')
-        if 'scanmot_del' in fio_dict:
-            self.scanmot_del.setText(str(fio_dict['scanmot_del']))
-            self.scanmot_del.setStyleSheet('color: blue')
         if 'detector' in fio_dict:
             self.detector.setText(str(fio_dict['detector']))
             self.detector.setStyleSheet('color: blue')
@@ -366,8 +351,6 @@ class InstrTab(QWidget):
 
         tab_layout = QVBoxLayout()
         gen_layout = QFormLayout()
-        self.diffractometer = QLineEdit()
-        gen_layout.addRow("diffractometer", self.diffractometer)
         self.data_dir_button = QPushButton()
         gen_layout.addRow("data dir", self.data_dir_button)
         self.sample = QLineEdit()
@@ -414,9 +397,6 @@ class InstrTab(QWidget):
         -------
         nothing
         """
-        if 'diffractometer' in conf_map:
-            diff = str(conf_map['diffractometer']).replace(" ", "")
-            self.diffractometer.setText(diff)
         if 'data_dir' in conf_map:
             if os.path.isdir(conf_map['data_dir']):
                 self.data_dir_button.setStyleSheet("Text-align:left")
@@ -483,7 +463,6 @@ class InstrTab(QWidget):
 
 
     def clear_conf(self):
-        self.diffractometer.setText('')
         self.data_dir_button.setText('')
         self.sample.setText('')
         if self.add_config:
@@ -524,8 +503,6 @@ class InstrTab(QWidget):
             contains parameters read from window
         """
         conf_map = {}
-        if len(self.diffractometer.text()) > 0:
-            conf_map['diffractometer'] = str(self.diffractometer.text())
         if len(self.data_dir_button.text()) > 0:
             conf_map['data_dir'] = str(self.data_dir_button.text())
         if len(self.sample.text()) > 0:

@@ -154,6 +154,7 @@ class ASI(aps20Detector):
     Subclass of Detector. Encapsulates any detector. Values are based on "34idcTIM2" detector.
     """
     name = "ASI"
+    dims = [512, 512]
     det_roi = [0, 512, 0, 512]
     pixel = (55.0e-6, 55e-6)
     pixelorientation = ('x+', 'y-')  # in xrayutilities notation
@@ -162,6 +163,7 @@ class ASI(aps20Detector):
     max_crop = None
     min_frames = 0  # defines minimum frame scans in scan directory
     Imult = None
+    beam_zero = [dims[0] // 2, dims[1] // 2]
 
     def __init__(self, params):
         super(ASI, self).__init__(params)
@@ -416,14 +418,6 @@ dets = {detector.name: detector for detector in aps20Detector.__subclasses__()}
 
 def create_detector(det_name, params):
     return dets[det_name](params)
-
-
-def get_pixel(det_name):
-    return dets[det_name].pixel
-
-
-def get_pixel_orientation(det_name):
-    return dets[det_name].pixelorientation
 
 
 def check_mandatory_params(det_name, params):

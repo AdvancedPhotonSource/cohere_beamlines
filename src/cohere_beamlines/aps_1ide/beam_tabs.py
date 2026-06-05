@@ -9,8 +9,8 @@ from PyQt6.QtCore import *
 from PyQt6.QtWidgets import *
 import ast
 import cohere_core.utilities as ut
-import cohere_beamlines.aps_1ide.diffractometers as diff
-
+from cohere_beamlines.aps_1ide.diffractometers import Diffractometer
+from cohere_beamlines.aps_1ide.instrument import Instrument_aps_1ide
 
 
 def msg_window(text):
@@ -113,14 +113,11 @@ class SubInstrTab():
         spec_layout.addRow("vff_r (mm)", self.vff_r)
         self.scanmot = QLineEdit()
         spec_layout.addRow("scan motor", self.scanmot)
-        self.scanmot_del = QLineEdit()
-        spec_layout.addRow("scan motor delta", self.scanmot_del)
 
         self.aero.textChanged.connect(lambda: set_overriden(self.aero))
         self.vff_eta.textChanged.connect(lambda: set_overriden(self.vff_eta))
         self.vff_r.textChanged.connect(lambda: set_overriden(self.vff_r))
         self.scanmot.textChanged.connect(lambda: set_overriden(self.scanmot))
-        self.scanmot_del.textChanged.connect(lambda: set_overriden(self.scanmot_del))
 
 
     def load_tab(self, conf_map):
@@ -149,9 +146,6 @@ class SubInstrTab():
         if 'scanmot' in conf_map:
             self.scanmot.setText(str(conf_map['scanmot']).replace(" ", ""))
             self.scanmot.setStyleSheet('color: black')
-        if 'scanmot_del' in conf_map:
-            self.scanmot_del.setText(str(conf_map['scanmot_del']).replace(" ", ""))
-            self.scanmot_del.setStyleSheet('color: black')
 
 
     def clear_conf(self):
@@ -159,7 +153,6 @@ class SubInstrTab():
         self.vff_eta.setText('')
         self.vff_r.setText('')
         self.scanmot.setText('')
-        self.scanmot_del.setText('')
 
 
     def get_instr_config(self):
@@ -182,8 +175,6 @@ class SubInstrTab():
             conf_map['vff_r'] = ast.literal_eval(str(self.vff_r.text()))
         if len(self.scanmot.text()) > 0:
             conf_map['scanmot'] = str(self.scanmot.text())
-        if len(self.scanmot_del.text()) > 0:
-            conf_map['scanmot_del'] = ast.literal_eval(str(self.scanmot_del.text()))
 
         return conf_map
 
@@ -205,11 +196,6 @@ class SubInstrTab():
             msg_window ('cannot parse spec, scan not defined')
             return
 
-        diffractometer = self.instr_tab.diffractometer.text()
-        if len(diffractometer) == 0:
-            msg_window ('cannot parse spec, diffractometer not defined')
-            return
-
         specfile = self.instr_tab.spec_file_button.text()
         if len(specfile) == 0:
             msg_window ('cannot parse spec, specfile not defined')
@@ -223,14 +209,10 @@ class SubInstrTab():
             msg_window ('cannot parse spec, vff_eta_offset not defined')
             return
 
-        try:
-            diff_obj = diff.create_diffractometer(diffractometer, {'specfile':specfile})
-        except:
-            msg_window (f'cannot create diffractometer {diffractometer}', diffractometer)
-            return
-
-        last_scan = int(scan.split('-')[-1].split(',')[-1])
-        spec_dict = diff_obj.parse_metadata(last_scan)
+        diff_obj = Diffractometer()
+        first_scan = int(scan.split('-')[0].split(',')[0])
+        instrument = Instrument_aps_1ide(None, diff_obj, None)
+        spec_dict = instrument.parse_metadata(first_scan, specfile=specfile)
         if spec_dict is None:
             return
         # if 'energy' in spec_dict:
@@ -251,9 +233,6 @@ class SubInstrTab():
         if 'scanmot' in spec_dict:
             self.scanmot.setText(str(spec_dict['scanmot']))
             self.scanmot.setStyleSheet('color: blue')
-        if 'scanmot_del' in spec_dict:
-            self.scanmot_del.setText(str(spec_dict['scanmot_del']))
-            self.scanmot_del.setStyleSheet('color: blue')
         # if len(self.instr_tab.detector.text()) == 0 and 'detector' in spec_dict:
         #     self.instr_tab.detector.setText(str(spec_dict['detector']))
         #     self.instr_tab.detector.setStyleSheet('color: blue')
@@ -305,8 +284,6 @@ class InstrTab(QWidget):
 
         tab_layout = QVBoxLayout()
         gen_layout = QFormLayout()
-        self.diffractometer = QLineEdit()
-        gen_layout.addRow("diffractometer", self.diffractometer)
         self.spec_file_button = QPushButton()
         gen_layout.addRow("spec file", self.spec_file_button)
         self.data_dir_button = QPushButton()
@@ -367,9 +344,6 @@ class InstrTab(QWidget):
         -------
         nothing
         """
-        if 'diffractometer' in conf_map:
-            diff = str(conf_map['diffractometer']).replace(" ", "")
-            self.diffractometer.setText(diff)
         if 'specfile' in conf_map:
             specfile = conf_map['specfile']
             if os.path.isfile(specfile):
@@ -412,11 +386,11 @@ class InstrTab(QWidget):
             self.beam_zero.setText(str(conf_map['beam_zero']).replace(" ", ""))
             self.beam_zero.setStyleSheet('color: black')
         if 'vff_r_offset' in conf_map:
-            diff = str(conf_map['vff_r_offset']).replace(" ", "")
-            self.vff_r_offset.setText(diff)
+            roff = str(conf_map['vff_r_offset']).replace(" ", "")
+            self.vff_r_offset.setText(roff)
         if 'vff_eta_offset' in conf_map:
-            diff = str(conf_map['vff_eta_offset']).replace(" ", "")
-            self.vff_eta_offset.setText(diff)
+            eoff = str(conf_map['vff_eta_offset']).replace(" ", "")
+            self.vff_eta_offset.setText(eoff)
         if 'energy' in conf_map:
             self.energy.setText(str(conf_map['energy']).replace(" ", ""))
             self.energy.setStyleSheet('color: black')
@@ -507,7 +481,6 @@ class InstrTab(QWidget):
 
 
     def clear_conf(self):
-        self.diffractometer.setText('')
         self.spec_file_button.setText('')
         self.data_dir_button.setText('')
         self.dark_file_button.setText('')
@@ -554,8 +527,6 @@ class InstrTab(QWidget):
             contains parameters read from window
         """
         conf_map = {}
-        if len(self.diffractometer.text()) > 0:
-            conf_map['diffractometer'] = str(self.diffractometer.text())
         if len(self.spec_file_button.text()) > 0:
             conf_map['specfile'] = str(self.spec_file_button.text())
         if len(self.data_dir_button.text().strip()) > 0:
