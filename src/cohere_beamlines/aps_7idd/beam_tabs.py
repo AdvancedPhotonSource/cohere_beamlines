@@ -86,6 +86,7 @@ def set_overriden(item):
     -------
     nothing
     """
+    item.setModified(True)
     item.setStyleSheet('color: black')
 
 
@@ -107,30 +108,40 @@ class SubInstrTab():
         spec_layout = QFormLayout()
         self.spec_widget.setLayout(spec_layout)
         self.energy = QLineEdit()
+        self.energy.setModified(False)
         spec_layout.addRow("energy", self.energy)
         self.yaw = QLineEdit()
+        self.yaw.setModified(False)
         spec_layout.addRow("yaw (deg)", self.yaw)
         self.pitch = QLineEdit()
+        self.pitch.setModified(False)
         spec_layout.addRow("pitch (deg)", self.pitch)
-        self.Radius = QLineEdit()
-        spec_layout.addRow("Radius (mm)", self.Radius)
+        self.radius = QLineEdit()
+        self.radius.setModified(False)
+        spec_layout.addRow("radius (mm)", self.radius)
         self.wedge = QLineEdit()
+        self.wedge.setModified(False)
         spec_layout.addRow("wedge (deg)", self.wedge)
         self.chi = QLineEdit()
+        self.chi.setModified(False)
         spec_layout.addRow("chi (deg)", self.chi)
         self.th = QLineEdit()
+        self.th.setModified(False)
         spec_layout.addRow("th (deg)", self.th)
         self.phi = QLineEdit()
+        self.phi.setModified(False)
         spec_layout.addRow("phi (deg)", self.phi)
         self.scanmot = QLineEdit()
+        self.scanmot.setModified(False)
         spec_layout.addRow("scan motor", self.scanmot)
         self.detector = QLineEdit()
+        self.detector.setModified(False)
         spec_layout.addRow("detector", self.detector)
 
         self.energy.textChanged.connect(lambda: set_overriden(self.energy))
         self.yaw.textChanged.connect(lambda: set_overriden(self.yaw))
         self.pitch.textChanged.connect(lambda: set_overriden(self.pitch))
-        self.Radius.textChanged.connect(lambda: set_overriden(self.Radius))
+        self.radius.textChanged.connect(lambda: set_overriden(self.radius))
         self.wedge.textChanged.connect(lambda: set_overriden(self.wedge))
         self.th.textChanged.connect(lambda: set_overriden(self.th))
         self.chi.textChanged.connect(lambda: set_overriden(self.chi))
@@ -150,46 +161,41 @@ class SubInstrTab():
         -------
         nothing
         """
+        def override_item(item, value):
+            item.setText(value)
+            item.setStyleSheet('color: black')
+            item.setModified(True)
+
         self.parse_metadata()
 
         # if parameters are configured, override the readings from spec file
         if 'energy' in conf_map:
-            self.energy.setText(str(conf_map['energy']).replace(" ", ""))
-            self.energy.setStyleSheet('color: black')
+            override_item(self.energy, str(conf_map['energy']).replace(" ", ""))
         if 'yaw' in conf_map:
-            self.yaw.setText(str(conf_map['yaw']).replace(" ", ""))
-            self.yaw.setStyleSheet('color: black')
+            override_item(self.yaw, str(conf_map['yaw']).replace(" ", ""))
         if 'pitch' in conf_map:
-            self.pitch.setText(str(conf_map['pitch']).replace(" ", ""))
-            self.pitch.setStyleSheet('color: black')
-        if 'Radius' in conf_map:
-            self.Radius.setText(str(conf_map['Radius']).replace(" ", ""))
-            self.Radius.setStyleSheet('color: black')
+            override_item(self.pitch, str(conf_map['pitch']).replace(" ", ""))
+        if 'radius' in conf_map:
+            override_item(self.radius, str(conf_map['radius']).replace(" ", ""))
         if 'wedge' in conf_map:
-            self.wedge.setText(str(conf_map['wedge']).replace(" ", ""))
-            self.wedge.setStyleSheet('color: black')
+            override_item(self.wedge, str(conf_map['wedge']).replace(" ", ""))
         if 'th' in conf_map:
-            self.th.setText(str(conf_map['th']).replace(" ", ""))
-            self.th.setStyleSheet('color: black')
+            override_item(self.th, str(conf_map['th']).replace(" ", ""))
         if 'chi' in conf_map:
-            self.chi.setText(str(conf_map['chi']).replace(" ", ""))
-            self.chi.setStyleSheet('color: black')
+            override_item(self.chi, str(conf_map['chi']).replace(" ", ""))
         if 'phi' in conf_map:
-            self.phi.setText(str(conf_map['phi']).replace(" ", ""))
-            self.phi.setStyleSheet('color: black')
+            override_item(self.phi, str(conf_map['phi']).replace(" ", ""))
         if 'scanmot' in conf_map:
-            self.scanmot.setText(str(conf_map['scanmot']).replace(" ", ""))
-            self.scanmot.setStyleSheet('color: black')
+            override_item(self.scanmot, str(conf_map['scanmot']).replace(" ", ""))
         if 'detector' in conf_map:
-            self.detector.setText(str(conf_map['detector']).replace(" ", ""))
-            self.detector.setStyleSheet('color: black')
+            override_item(self.detector, str(conf_map['detector']).replace(" ", ""))
 
 
     def clear_conf(self):
         self.energy.setText('')
         self.yaw.setText('')
         self.pitch.setText('')
-        self.Radius.setText('')
+        self.radius.setText('')
         self.wedge.setText('')
         self.th.setText('')
         self.chi.setText('')
@@ -210,25 +216,25 @@ class SubInstrTab():
             contains parameters read from window
         """
         conf_map = {}
-        if len(self.energy.text()) > 0:
+        if self.energy.isModified() and len(self.energy.text()) > 0:
             conf_map['energy'] = ast.literal_eval(str(self.energy.text()))
-        if len(self.yaw.text()) > 0:
+        if self.yaw.isModified() and len(self.yaw.text()) > 0:
             conf_map['yaw'] = ast.literal_eval(str(self.yaw.text()))
-        if len(self.pitch.text()) > 0:
+        if self.pitch.isModified() and len(self.pitch.text()) > 0:
             conf_map['pitch'] = ast.literal_eval(str(self.pitch.text()))
-        if len(self.Radius.text()) > 0:
-            conf_map['Radius'] = ast.literal_eval(str(self.Radius.text()))
-        if len(self.wedge.text()) > 0:
+        if self.radius.isModified() and len(self.radius.text()) > 0:
+            conf_map['radius'] = ast.literal_eval(str(self.radius.text()))
+        if self.wedge.isModified() and len(self.wedge.text()) > 0:
             conf_map['wedge'] = ast.literal_eval(str(self.wedge.text()))
-        if len(self.th.text()) > 0:
+        if self.th.isModified() and len(self.th.text()) > 0:
             conf_map['th'] = ast.literal_eval(str(self.th.text()))
-        if len(self.chi.text()) > 0:
+        if self.chi.isModified() and len(self.chi.text()) > 0:
             conf_map['chi'] = ast.literal_eval(str(self.chi.text()))
-        if len(self.phi.text()) > 0:
+        if self.phi.isModified() and len(self.phi.text()) > 0:
             conf_map['phi'] = ast.literal_eval(str(self.phi.text()))
-        if len(self.scanmot.text()) > 0:
+        if self.scanmot.isModified() and len(self.scanmot.text()) > 0:
             conf_map['scanmot'] = str(self.scanmot.text())
-        if len(self.detector.text()) > 0:
+        if self.detector.isModified() and len(self.detector.text()) > 0:
             conf_map['detector'] = str(self.detector.text())
 
         return conf_map
@@ -244,6 +250,11 @@ class SubInstrTab():
         -------
         nothing
         """
+        def set_item_parsed(item, value):
+            item.setText(value)
+            item.setModified(False)
+            item.setStyleSheet('color: blue')
+
         if not self.main_window.loaded and not self.main_window.is_exp_set():
             return
         scan = str(self.main_window.scan_widget.text())
@@ -264,35 +275,25 @@ class SubInstrTab():
         if spec_dict is None:
             return
         if 'energy' in spec_dict:
-            self.energy.setText(str(spec_dict['energy']))
-            self.energy.setStyleSheet('color: blue')
+            set_item_parsed(self.energy, str(spec_dict['energy']))
         if 'yaw' in spec_dict:
-            self.yaw.setText(str(spec_dict['yaw']))
-            self.yaw.setStyleSheet('color: blue')
+            set_item_parsed(self.yaw, str(spec_dict['yaw']))
         if 'pitch' in spec_dict:
-            self.pitch.setText(str(spec_dict['pitch']))
-            self.pitch.setStyleSheet('color: blue')
+            set_item_parsed(self.pitch, str(spec_dict['pitch']))
         if 'wedge' in spec_dict:
-            self.wedge.setText(str(spec_dict['wedge']))
-            self.wedge.setStyleSheet('color: blue')
+            set_item_parsed(self.wedge, str(spec_dict['wedge']))
         if 'th' in spec_dict:
-            self.th.setText(str(spec_dict['th']))
-            self.th.setStyleSheet('color: blue')
+            set_item_parsed(self.th, str(spec_dict['th']))
         if 'chi' in spec_dict:
-            self.chi.setText(str(spec_dict['chi']))
-            self.chi.setStyleSheet('color: blue')
+            set_item_parsed(self.chi, str(spec_dict['chi']))
         if 'phi' in spec_dict:
-            self.phi.setText(str(spec_dict['phi']))
-            self.phi.setStyleSheet('color: blue')
+            set_item_parsed(self.phi, str(spec_dict['phi']))
         if 'radius' in spec_dict:
-            self.Radius.setText(str(spec_dict['radius']))
-            self.Radius.setStyleSheet('color: blue')
+            set_item_parsed(self.radius, str(spec_dict['radius']))
         if 'scanmot' in spec_dict:
-            self.scanmot.setText(str(spec_dict['scanmot']))
-            self.scanmot.setStyleSheet('color: blue')
+            set_item_parsed(self.scanmot, str(spec_dict['scanmot']))
         if 'detector' in spec_dict:
-            self.detector.setText(str(spec_dict['detector']))
-            self.detector.setStyleSheet('color: blue')
+            set_item_parsed(self.detector, str(spec_dict['detector']))
 
 
 class InstrTab(QWidget):

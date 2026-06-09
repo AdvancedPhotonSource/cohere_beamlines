@@ -119,7 +119,7 @@ def get_config_error_message(config_file_name, map_file, config_parameter, confi
     :return: An error string describing the error and where it was found
     """
     config_map_dic = config_map_names.get(map_file)
-
+    print('config parameter:', config_parameter)
     error_string_message = config_map_dic.get(config_parameter)[config_error_no]
     # presented_message = "File=" + config_file_name, "Parameter=" + config_parameter, "Error=" + error_string_message
 
@@ -294,20 +294,6 @@ def ver_config_instr(config_map):
     """
     config_map_file = 'config_instr_error_map_file'
     fname = 'config_instr'
-
-    config_parameter = 'Diffractometer'
-    if 'diffractometer' in config_map:
-        diffractometer = config_map['diffractometer']
-        if type(diffractometer) != str:
-            config_error = 1
-            error_message = get_config_error_message(fname, config_map_file, config_parameter, config_error)
-            print('diffractometer parameter should be string')
-            return (error_message)
-    else:
-        config_error = 0
-        error_message = get_config_error_message(fname, config_map_file, config_parameter, config_error)
-        print('missing mandatory diffractometer parameter')
-        return ''
 
     config_parameter = 'Roi'
     if 'roi' in config_map:

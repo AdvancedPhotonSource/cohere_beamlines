@@ -86,6 +86,7 @@ def set_overriden(item):
     -------
     nothing
     """
+    item.setModified(True)
     item.setStyleSheet('color: black')
 
 
@@ -107,24 +108,34 @@ class SubInstrTab():
         fio_layout = QFormLayout()
         self.fio_widget.setLayout(fio_layout)
         self.energy = QLineEdit()
+        self.energy.setModified(False)
         fio_layout.addRow("energy", self.energy)
         self.delta = QLineEdit()
+        self.delta.setModified(False)
         fio_layout.addRow("delta (deg)", self.delta)
         self.gamma = QLineEdit()
+        self.gamma.setModified(False)
         fio_layout.addRow("gamma (deg)", self.gamma)
         self.detdist = QLineEdit()
+        self.detdist.setModified(False)
         fio_layout.addRow("detdist (mm)", self.detdist)
         self.mu = QLineEdit()
+        self.mu.setModified(False)
         fio_layout.addRow("mu ", self.mu)
         self.om = QLineEdit()
+        self.om.setModified(False)
         fio_layout.addRow("om ", self.om)
         self.chi = QLineEdit()
+        self.chi.setModified(False)
         fio_layout.addRow("chi (deg)", self.chi)
         self.phi = QLineEdit()
+        self.phi.setModified(False)
         fio_layout.addRow("phi (deg)", self.phi)
         self.scanmot = QLineEdit()
+        self.scanmot.setModified(False)
         fio_layout.addRow("scan motor", self.scanmot)
         self.detector = QLineEdit()
+        self.detector.setModified(False)
         fio_layout.addRow("detector", self.detector)
 
         self.energy.textChanged.connect(lambda: set_overriden(self.energy))
@@ -150,39 +161,34 @@ class SubInstrTab():
         -------
         nothing
         """
+        def override_item(item, value):
+            item.setText(value)
+            item.setStyleSheet('color: black')
+            item.setModified(True)
+
         self.parse_foi()
 
         # if parameters are configured, override the readings from fio file
         if 'energy' in conf_map:
-            self.energy.setText(str(conf_map['energy']).replace(" ", ""))
-            self.energy.setStyleSheet('color: black')
+            override_item(self.energy, str(conf_map['energy']).replace(" ", ""))
         if 'del' in conf_map:
-            self.delta.setText(str(conf_map['del']).replace(" ", ""))
-            self.delta.setStyleSheet('color: black')
+            override_item(self.delta, str(conf_map['del']).replace(" ", ""))
         if 'gam' in conf_map:
-            self.gamma.setText(str(conf_map['gam']).replace(" ", ""))
-            self.gamma.setStyleSheet('color: black')
+            override_item(self.gamma, str(conf_map['gam']).replace(" ", ""))
         if 'detdist' in conf_map:
-            self.detdist.setText(str(conf_map['detdist']).replace(" ", ""))
-            self.detdist.setStyleSheet('color: black')
+            override_item(self.detdist, str(conf_map['detdist']).replace(" ", ""))
         if 'om' in conf_map:
-            self.om.setText(str(conf_map['om']).replace(" ", ""))
-            self.om.setStyleSheet('color: black')
+            override_item(self.om, str(conf_map['om']).replace(" ", ""))
         if 'mu' in conf_map:
-            self.mu.setText(str(conf_map['mu']).replace(" ", ""))
-            self.mu.setStyleSheet('color: black')
+            override_item(self.mu, str(conf_map['mu']).replace(" ", ""))
         if 'chi' in conf_map:
-            self.chi.setText(str(conf_map['chi']).replace(" ", ""))
-            self.chi.setStyleSheet('color: black')
+            override_item(self.chi, str(conf_map['chi']).replace(" ", ""))
         if 'phi' in conf_map:
-            self.phi.setText(str(conf_map['phi']).replace(" ", ""))
-            self.phi.setStyleSheet('color: black')
+            override_item(self.phi, str(conf_map['phi']).replace(" ", ""))
         if 'scanmot' in conf_map:
-            self.scanmot.setText(str(conf_map['scanmot']).replace(" ", ""))
-            self.scanmot.setStyleSheet('color: black')
+            override_item(self.scanmot, str(conf_map['scanmot']).replace(" ", ""))
         if 'detector' in conf_map:
-            self.detector.setText(str(conf_map['detector']).replace(" ", ""))
-            self.detector.setStyleSheet('color: black')
+            override_item(self.detector, str(conf_map['detector']).replace(" ", ""))
 
 
     def clear_conf(self):
@@ -210,25 +216,25 @@ class SubInstrTab():
             contains parameters read from window
         """
         conf_map = {}
-        if len(self.energy.text()) > 0:
+        if self.energy.isModified() and len(self.energy.text()) > 0:
             conf_map['energy'] = ast.literal_eval(str(self.energy.text()))
-        if len(self.delta.text()) > 0:
+        if self.delta.isModified() and len(self.delta.text()) > 0:
             conf_map['del'] = ast.literal_eval(str(self.delta.text()))
-        if len(self.gamma.text()) > 0:
+        if self.gamma.isModified() and len(self.gamma.text()) > 0:
             conf_map['gam'] = ast.literal_eval(str(self.gamma.text()))
-        if len(self.detdist.text()) > 0:
+        if self.detdist.isModified() and len(self.detdist.text()) > 0:
             conf_map['detdist'] = ast.literal_eval(str(self.detdist.text()))
-        if len(self.mu.text()) > 0:
+        if self.mu.isModified() and len(self.mu.text()) > 0:
             conf_map['mu'] = ast.literal_eval(str(self.mu.text()))
-        if len(self.om.text()) > 0:
+        if self.om.isModified() and len(self.om.text()) > 0:
             conf_map['om'] = ast.literal_eval(str(self.om.text()))
-        if len(self.chi.text()) > 0:
+        if self.chi.isModified() and len(self.chi.text()) > 0:
             conf_map['chi'] = ast.literal_eval(str(self.chi.text()))
-        if len(self.phi.text()) > 0:
+        if self.phi.isModified() and len(self.phi.text()) > 0:
             conf_map['phi'] = ast.literal_eval(str(self.phi.text()))
-        if len(self.scanmot.text()) > 0:
+        if self.scanmot.isModified() and len(self.scanmot.text()) > 0:
             conf_map['scanmot'] = str(self.scanmot.text())
-        if len(self.detector.text()) > 0:
+        if self.detector.isModified() and len(self.detector.text()) > 0:
             conf_map['detector'] = str(self.detector.text())
 
         return conf_map
@@ -244,6 +250,11 @@ class SubInstrTab():
         -------
         nothing
         """
+        def set_item_parsed(item, value):
+            item.setText(value)
+            item.setModified(False)
+            item.setStyleSheet('color: blue')
+
         if not self.main_window.loaded and not self.main_window.is_exp_set():
             return
         scan = str(self.main_window.scan_widget.text())
@@ -274,36 +285,25 @@ class SubInstrTab():
         if fio_dict is None:
             return
         if 'energy' in fio_dict:
-            self.energy.setText(str(fio_dict['energy']))
-            self.energy.setStyleSheet('color: blue')
+            set_item_parsed(self.energy, str(fio_dict['energy']))
         if 'del' in fio_dict:
-            self.delta.setText(str(fio_dict['del']))
-            self.delta.setStyleSheet('color: blue')
+            set_item_parsed(self.delta, str(fio_dict['del']))
         if 'gam' in fio_dict:
-            self.gamma.setText(str(fio_dict['gam']))
-            self.gamma.setStyleSheet('color: blue')
+            set_item_parsed(self.gamma, str(fio_dict['gam']))
         if 'om' in fio_dict:
-            self.om.setText(str(fio_dict['om']))
-            self.om.setStyleSheet('color: blue')
+            set_item_parsed(self.om, str(fio_dict['om']))
         if 'mu' in fio_dict:
-            self.mu.setText(str(fio_dict['mu']))
-            self.mu.setStyleSheet('color: blue')
+            set_item_parsed(self.mu, str(fio_dict['mu']))
         if 'chi' in fio_dict:
-            self.chi.setText(str(fio_dict['chi']))
-            self.chi.setStyleSheet('color: blue')
+            set_item_parsed(self.chi, str(fio_dict['chi']))
         if 'phi' in fio_dict:
-            self.phi.setText(str(fio_dict['phi']))
-            self.phi.setStyleSheet('color: blue')
+            set_item_parsed(self.phi, str(fio_dict['phi']))
         if 'detdist' in fio_dict:
-            self.detdist.setText(str(fio_dict['detdist']))
-            self.detdist.setStyleSheet('color: blue')
+            set_item_parsed(self.detdist, str(fio_dict['detdist']))
         if 'scanmot' in fio_dict:
-            self.scanmot.setText(str(fio_dict['scanmot']))
-            self.scanmot.setStyleSheet('color: blue')
+            set_item_parsed(self.scanmot, str(fio_dict['scanmot']))
         if 'detector' in fio_dict:
-            self.detector.setText(str(fio_dict['detector']))
-            self.detector.setStyleSheet('color: blue')
-
+            set_item_parsed(self.detector, str(fio_dict['detector']))
 
 
 class InstrTab(QWidget):
@@ -543,7 +543,6 @@ class InstrTab(QWidget):
 
         if len(conf_map) == 0:
             return
-
         ut.write_config(conf_map, ut.join(self.main_win.experiment_dir, 'conf', 'config_instr'))
 
 

@@ -86,6 +86,7 @@ def set_overriden(item):
     -------
     nothing
     """
+    item.setModified(True)
     item.setStyleSheet('color: black')
 
 
@@ -107,12 +108,16 @@ class SubInstrTab():
         spec_layout = QFormLayout()
         self.meta_widget.setLayout(spec_layout)
         self.energy = QLineEdit()
+        self.energy.setModified(False)
         spec_layout.addRow("energy", self.energy)
         self.DetX = QLineEdit()
+        self.DetX.setModified(False)
         spec_layout.addRow("DetX (mm)", self.DetX)
         self.DetY = QLineEdit()
+        self.DetY.setModified(False)
         spec_layout.addRow("DetY (mm)", self.DetY)
         self.DetZ = QLineEdit()
+        self.DetZ.setModified(False)
         spec_layout.addRow("DetZ (mm)", self.DetZ)
 
         self.energy.textChanged.connect(lambda: set_overriden(self.energy))
@@ -132,21 +137,22 @@ class SubInstrTab():
         -------
         nothing
         """
+        def override_item(item, value):
+            item.setText(value)
+            item.setStyleSheet('color: black')
+            item.setModified(True)
+
         self.parse_metadata()
 
         # if parameters are configured, override the readings from spec file
         if 'energy' in conf_map:
-            self.energy.setText(str(conf_map['energy']).replace(" ", ""))
-            self.energy.setStyleSheet('color: black')
+            override_item(self.energy, str(conf_map['energy']).replace(" ", ""))
         if 'DetX' in conf_map:
-            self.DetX.setText(str(conf_map['DetX']).replace(" ", ""))
-            self.DetX.setStyleSheet('color: black')
+            override_item(self.DetX, str(conf_map['DetX']).replace(" ", ""))
         if 'DetY' in conf_map:
-            self.DetY.setText(str(conf_map['DetY']).replace(" ", ""))
-            self.DetY.setStyleSheet('color: black')
+            override_item(self.DetY, str(conf_map['DetY']).replace(" ", ""))
         if 'DetZ' in conf_map:
-            self.DetZ.setText(str(conf_map['DetZ']).replace(" ", ""))
-            self.DetZ.setStyleSheet('color: black')
+            override_item(self.DetZ, str(conf_map['DetZ']).replace(" ", ""))
 
 
     def clear_conf(self):
@@ -168,13 +174,13 @@ class SubInstrTab():
             contains parameters read from window
         """
         conf_map = {}
-        if len(self.energy.text()) > 0:
+        if self.energy.isModified() and len(self.energy.text()) > 0:
             conf_map['energy'] = ast.literal_eval(str(self.energy.text()))
-        if len(self.DetX.text()) > 0:
+        if self.DetX.isModified() and len(self.DetX.text()) > 0:
             conf_map['DetX'] = ast.literal_eval(str(self.DetX.text()))
-        if len(self.DetY.text()) > 0:
+        if self.DetY.isModified() and len(self.DetY.text()) > 0:
             conf_map['DetY'] = ast.literal_eval(str(self.DetY.text()))
-        if len(self.DetZ.text()) > 0:
+        if self.DetZ.isModified() and len(self.DetZ.text()) > 0:
             conf_map['DetZ'] = ast.literal_eval(str(self.DetZ.text()))
 
         return conf_map
@@ -190,6 +196,11 @@ class SubInstrTab():
         -------
         nothing
         """
+        def set_item_parsed(item, value):
+            item.setText(value)
+            item.setModified(False)
+            item.setStyleSheet('color: blue')
+
         if not self.main_window.loaded and not self.main_window.is_exp_set():
             return
         scan = str(self.main_window.scan_widget.text())
@@ -210,17 +221,13 @@ class SubInstrTab():
             return
 
         if 'energy' in meta_dict:
-            self.energy.setText(str(meta_dict['energy']))
-            self.energy.setStyleSheet('color: blue')
+            set_item_parsed(self.energy, str(meta_dict['energy']))
         if 'DetX' in meta_dict:
-            self.DetX.setText(str(meta_dict['DetX']))
-            self.DetX.setStyleSheet('color: blue')
+            set_item_parsed(self.DetX, str(meta_dict['DetX']))
         if 'DetY' in meta_dict:
-            self.DetY.setText(str(meta_dict['DetY']))
-            self.DetY.setStyleSheet('color: blue')
+            set_item_parsed(self.DetY, str(meta_dict['DetY']))
         if 'DetZ' in meta_dict:
-            self.DetZ.setText(str(meta_dict['DetZ']))
-            self.DetZ.setStyleSheet('color: blue')
+            set_item_parsed(self.DetZ, str(meta_dict['DetZ']))
 
 
 class InstrTab(QWidget):

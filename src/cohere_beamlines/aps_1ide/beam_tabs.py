@@ -85,6 +85,7 @@ def set_overriden(item):
     -------
     nothing
     """
+    item.setModified(True)
     item.setStyleSheet('color: black')
 
 
@@ -106,12 +107,16 @@ class SubInstrTab():
         spec_layout = QFormLayout()
         self.spec_widget.setLayout(spec_layout)
         self.aero = QLineEdit()
+        self.aero.setModified(False)
         spec_layout.addRow("aero", self.aero)
         self.vff_eta = QLineEdit()
+        self.vff_eta.setModified(False)
         spec_layout.addRow("vff_eta (m)", self.vff_eta)
         self.vff_r = QLineEdit()
+        self.vff_r.setModified(False)
         spec_layout.addRow("vff_r (mm)", self.vff_r)
         self.scanmot = QLineEdit()
+        self.scanmot.setModified(False)
         spec_layout.addRow("scan motor", self.scanmot)
 
         self.aero.textChanged.connect(lambda: set_overriden(self.aero))
@@ -131,21 +136,22 @@ class SubInstrTab():
         -------
         nothing
         """
+        def override_item(item, value):
+            item.setText(value)
+            item.setStyleSheet('color: black')
+            item.setModified(True)
+
         self.parse_metadata()
 
         # if parameters are configured, override the readings from spec file
         if 'aero' in conf_map:
-            self.aero.setText(str(conf_map['aero']).replace(" ", ""))
-            self.aero.setStyleSheet('color: black')
+            override_item(self.aero, str(conf_map['aero']).replace(" ", ""))
         if 'vff_eta' in conf_map:
-            self.vff_eta.setText(str(conf_map['vff_eta']).replace(" ", ""))
-            self.vff_eta.setStyleSheet('color: black')
+            override_item(self.vff_eta, str(conf_map['vff_eta']).replace(" ", ""))
         if 'vff_r' in conf_map:
-            self.vff_r.setText(str(conf_map['vff_r']).replace(" ", ""))
-            self.vff_r.setStyleSheet('color: black')
+            override_item(self.vff_r, str(conf_map['vff_r']).replace(" ", ""))
         if 'scanmot' in conf_map:
-            self.scanmot.setText(str(conf_map['scanmot']).replace(" ", ""))
-            self.scanmot.setStyleSheet('color: black')
+            override_item(self.scanmot, str(conf_map['scanmot']).replace(" ", ""))
 
 
     def clear_conf(self):
@@ -167,13 +173,13 @@ class SubInstrTab():
             contains parameters read from window
         """
         conf_map = {}
-        if len(self.aero.text()) > 0:
+        if self.aero.isModified() and len(self.aero.text()) > 0:
             conf_map['aero'] = ast.literal_eval(str(self.aero.text()))
-        if len(self.vff_eta.text()) > 0:
+        if self.vff_eta.isModified() and len(self.vff_eta.text()) > 0:
             conf_map['vff_eta'] = ast.literal_eval(str(self.vff_eta.text()))
-        if len(self.vff_r.text()) > 0:
+        if self.vff_r.isModified() and len(self.vff_r.text()) > 0:
             conf_map['vff_r'] = ast.literal_eval(str(self.vff_r.text()))
-        if len(self.scanmot.text()) > 0:
+        if self.scanmot.isModified() and len(self.scanmot.text()) > 0:
             conf_map['scanmot'] = str(self.scanmot.text())
 
         return conf_map
@@ -189,6 +195,11 @@ class SubInstrTab():
         -------
         nothing
         """
+        def set_item_parsed(item, value):
+            item.setText(value)
+            item.setModified(False)
+            item.setStyleSheet('color: blue')
+
         if not self.main_window.loaded and not self.main_window.is_exp_set():
             return
         scan = str(self.main_window.scan_widget.text())
@@ -219,24 +230,13 @@ class SubInstrTab():
         #     self.instr_tab.energy.setText(str(spec_dict['energy']))
         #     self.instr_tab.energy.setStyleSheet('color: blue')
         if 'aero' in spec_dict:
-            self.aero.setText(str(spec_dict['aero']))
-            self.aero.setStyleSheet('color: blue')
+            set_item_parsed(self.aero, str(spec_dict['aero']))
         if 'vff_eta' in spec_dict:
-            self.vff_eta.setText(str(spec_dict['vff_eta']))
-            self.vff_eta.setStyleSheet('color: blue')
+            set_item_parsed(self.vff_eta, str(spec_dict['vff_eta']))
         if 'vff_r' in spec_dict:
-            self.vff_r.setText(str(spec_dict['vff_r']))
-            self.vff_r.setStyleSheet('color: blue')
-        # if 'detdist' in spec_dict:
-        #     self.instr_tab.detdist.setText(str(spec_dict['detdist']))
-        #     self.instr_tab.detdist.setStyleSheet('color: blue')
+            set_item_parsed(self.vff_r, str(spec_dict['vff_r']))
         if 'scanmot' in spec_dict:
-            self.scanmot.setText(str(spec_dict['scanmot']))
-            self.scanmot.setStyleSheet('color: blue')
-        # if len(self.instr_tab.detector.text()) == 0 and 'detector' in spec_dict:
-        #     self.instr_tab.detector.setText(str(spec_dict['detector']))
-        #     self.instr_tab.detector.setStyleSheet('color: blue')
-
+            set_item_parsed(self.scanmot, str(spec_dict['scanmot']))
 
 
 class InstrTab(QWidget):
