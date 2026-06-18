@@ -355,16 +355,14 @@ class Detector_34idcTIM2(aps34Detector):
 
 
     def get_realpixelpos(self, rawpixel):
-        # need to add the seam size to the pixel position if the pixel is after the seam.
-        if rawpixel[0] >= 256:
-            pixel0 = rawpixel[0] + self.det_roi[0] + self.seamsize[0]
-        else:
-            pixel0 = rawpixel[0] + self.det_roi[0]
-        if rawpixel[1] >= 256:
-            pixel1 = rawpixel[1] + self.det_roi[1] + self.seamsize[1]
-        else:
-            pixel1 = rawpixel[1] + self.det_roi[1]
-        return [pixel0, pixel1]
+        # Map a ROI-relative pixel back to absolute detector coords, adding the
+        # seam size to the pixel position if the pixel is after the seam.
+        # det_roi is (start, size, start, size), so the per-axis starts are [0] and [2].
+        # Looping over the two axes maintains consistency across axes. hardcoding midpoint is
+        # not ideal, but future development should look into it, right now this works.
+        starts = (self.det_roi[0], self.det_roi[2])
+        return [rawpixel[ax] + starts[ax] + (self.seamsize[ax] if rawpixel[ax] >= 256 else 0)
+                for ax in range(2)]
 
 
     # frame here can also be a 3D array.
