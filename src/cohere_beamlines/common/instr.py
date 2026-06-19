@@ -94,7 +94,8 @@ class Instrument(ABC):
         enfix = 1
         if m.floor(m.log10(energy)) < 3:
             enfix = 1000
-        params['energy'] = energy * enfix  # x-ray energy in eV
+        energy = energy * enfix  # x-ray energy in eV
+        params['energy'] = energy
 
         scanmot = params['scanmot'].strip()
 
