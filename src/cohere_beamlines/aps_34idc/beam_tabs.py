@@ -8,10 +8,13 @@ import os
 from PyQt6.QtCore import *
 from PyQt6.QtWidgets import *
 import ast
+from pathlib import Path
 import cohere_core.utilities as ut
 import cohere_beamlines.aps_34idc.beam_verifier as ver
 import cohere_beamlines.aps_34idc.instrument as instr
 import cohere_beamlines.aps_34idc.diffractometers as diff
+import cohere_beamlines.aps_34idc as bl
+import cohere_beamlines.common.instr_tab as common
 
 
 def msg_window(text):
@@ -132,8 +135,6 @@ class SubInstrTab():
         self.scanmot.setModified(False)
         spec_layout.addRow("scan motor", self.scanmot)
         self.detector = QLineEdit()
-        self.detector.setModified(False)
-        spec_layout.addRow("detector", self.detector)
 
         self.energy.textChanged.connect(lambda: set_overriden(self.energy))
         self.delta.textChanged.connect(lambda: set_overriden(self.delta))
@@ -143,7 +144,6 @@ class SubInstrTab():
         self.chi.textChanged.connect(lambda: set_overriden(self.chi))
         self.phi.textChanged.connect(lambda: set_overriden(self.phi))
         self.scanmot.textChanged.connect(lambda: set_overriden(self.scanmot))
-        self.detector.textChanged.connect(lambda: set_overriden(self.detector))
 
 
     def load_tab(self, conf_map):
@@ -182,7 +182,7 @@ class SubInstrTab():
         if 'scanmot' in conf_map:
             override_item(self.scanmot, str(conf_map['scanmot']).replace(" ", ""))
         if 'detector' in conf_map:
-            override_item(self.detector, str(conf_map['detector']).replace(" ", ""))
+            override_item(self.instr_tab.detector, str(conf_map['detector']).replace(" ", ""))
         if 'det_roi' in conf_map:
             override_item(self.instr_tab.det_roi, str(conf_map['det_roi']).replace(" ", ""))
 
@@ -196,7 +196,6 @@ class SubInstrTab():
         self.chi.setText('')
         self.phi.setText('')
         self.scanmot.setText('')
-        self.detector.setText('')
 
 
     def get_instr_config(self):
@@ -227,8 +226,6 @@ class SubInstrTab():
             conf_map['phi'] = ast.literal_eval(str(self.phi.text()))
         if self.scanmot.isModified() and len(self.scanmot.text()) > 0:
             conf_map['scanmot'] = str(self.scanmot.text())
-        if self.detector.isModified() and len(self.detector.text()) > 0:
-            conf_map['detector'] = str(self.detector.text())
 
         return conf_map
 
@@ -287,13 +284,11 @@ class SubInstrTab():
             set_item_parsed(self.detdist, str(spec_dict['detdist']))
         if 'scanmot' in spec_dict:
             set_item_parsed(self.scanmot, str(spec_dict['scanmot']))
-        if 'detector' in spec_dict:
-            set_item_parsed(self.detector, str(spec_dict['detector']))
 
+        if 'detector' in spec_dict:
+            set_item_parsed(self.instr_tab.detector, str(spec_dict['detector']))
         if 'det_roi' in spec_dict:
             set_item_parsed(self.instr_tab.det_roi, str(spec_dict['det_roi']))
-            # self.instr_tab.det_roi.setText(str(spec_dict['det_roi']))
-            # self.instr_tab.det_roi.setStyleSheet('color: blue')
 
 
 
@@ -352,6 +347,9 @@ class InstrTab(QWidget):
         gen_layout.addRow("whitefield file", self.white_file_button)
         self.Imult = QLineEdit()
         gen_layout.addRow("Imult", self.Imult)
+        self.detector = QLineEdit()
+        self.detector.setModified(False)
+        gen_layout.addRow("detector", self.detector)
         self.det_roi = QLineEdit()
         gen_layout.addRow("detector area (det_roi)", self.det_roi)
         self.beam_zero = QLineEdit()
@@ -375,6 +373,7 @@ class InstrTab(QWidget):
         self.data_dir_button.clicked.connect(self.set_data_dir)
         self.dark_file_button.clicked.connect(self.set_dark_file)
         self.white_file_button.clicked.connect(self.set_white_file)
+        self.detector.textChanged.connect(lambda: set_overriden(self.detector))
         self.det_roi.textChanged.connect(lambda: set_overriden(self.det_roi))
         self.save_instr_conf.clicked.connect(self.save_conf)
         self.set_instr_conf_from_button.clicked.connect(self.load_instr_conf)
@@ -415,7 +414,7 @@ class InstrTab(QWidget):
                 self.dark_file_button.setStyleSheet("Text-align:left")
                 self.dark_file_button.setText(conf_map['darkfield_filename'])
             else:
-                msg_window(f'The darkfield file {conf_map["darkfield_filename"]} in config_prep file does not exist')
+                msg_window(f'The darkfield file {conf_map["darkfield_filename"]} in config_prep file does not exist, getting from git repository')
                 self.dark_file_button.setText('')
         else:
             self.dark_file_button.setText('')
@@ -425,7 +424,7 @@ class InstrTab(QWidget):
                 self.white_file_button.setText(conf_map['whitefield_filename'])
             else:
                 self.white_file_button.setText('')
-                msg_window(f'The whitefield file {conf_map["whitefield_filename"]} in config_prep file does not exist')
+                msg_window(f'The whitefield file {conf_map["whitefield_filename"]} in config_prep file does not exist, getting from git repository')
         else:
             self.white_file_button.setText('')
         if 'Imult' in conf_map:
@@ -440,6 +439,20 @@ class InstrTab(QWidget):
 
         if self.add_config:
             self.extended.load_tab(conf_map)
+
+        if len(self.dark_file_button.text()) == 0 or len(self.white_file_button.text()) == 0:
+            # try to get the correction files from git repository
+            if len(self.spec_file_button.text()) > 0:
+                # This will get correction files (white, dark) from the cohere_beamlines repository on github
+                # To get the right files a timestamp must be known, so parse it from spec.
+                timestamp = common.get_specfile_timestamp(str(self.spec_file_button.text()))
+                detcorrectionsdir = os.path.join(Path(bl.__file__).parents[0], 'detector_corrections', str(self.detector.text()))
+                if len(self.dark_file_button.text()) == 0:
+                    darkfile = common.get_file_by_timestamp(detcorrectionsdir, timestamp, '*darkfield.tif')
+                    self.dark_file_button.setText(darkfile)
+                if len(self.white_file_button.text()) == 0:
+                    whitefile = common.get_file_by_timestamp(detcorrectionsdir, timestamp, '*whitefield.tif')
+                    self.white_file_button.setText(whitefile)
 
 
     def set_spec_file(self):
@@ -476,7 +489,8 @@ class InstrTab(QWidget):
         -------
         nothing
         """
-        darkfield_filename = select_file(os.getcwd())
+        start_dir = os.path.join(Path(bl.__file__).parents[0], 'detector_corrections')
+        darkfield_filename = select_file(start_dir)
         if darkfield_filename is not None:
             self.dark_file_button.setStyleSheet("Text-align:left")
             self.dark_file_button.setText(darkfield_filename)
@@ -494,7 +508,8 @@ class InstrTab(QWidget):
         -------
         nothing
         """
-        whitefield_filename = select_file(os.getcwd())
+        start_dir = os.path.join(Path(bl.__file__).parents[0], 'detector_corrections')
+        whitefield_filename = select_file(start_dir)
         if whitefield_filename is not None:
             self.white_file_button.setStyleSheet("Text-align:left")
             self.white_file_button.setText(whitefield_filename)
