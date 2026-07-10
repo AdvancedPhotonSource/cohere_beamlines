@@ -85,7 +85,7 @@ class simpleDetector(Detector):
         ordered_keys = sorted(list(slices_files.keys()))
         ordered_slices = [self.correct(slices_files[k]) for k in ordered_keys]
 
-        return np.stack(ordered_slices, axis=-1)
+        return np.stack(ordered_slices, axis=-1), [0,0]
 
 
     @abstractmethod
@@ -155,10 +155,17 @@ class Detector_34idcTIM2(simpleDetector):
     """
     name = "34idcTIM2"
     dims = (512, 512)
+    det_roi = (0, 512, 0, 512)
     pixel = (55.0e-6, 55e-6)
     pixelorientation = ('x+', 'y-')  # in xrayutilities notation
     whitefield = None
     darkfield = None
+    raw_frame = None
+    Imult = None
+    seamsize = (4, 5)  # number of rows/columns to insert for seam correction
+    beam_zero = [dims[0] // 2, dims[1] // 2]  # beam center in pixel coordinates, used for RSM calculation.
+                                              # This is just an estimate and can be overridden by config params.
+
 
     def __init__(self, params):
         super(Detector_34idcTIM2, self).__init__(params)

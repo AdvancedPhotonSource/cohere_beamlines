@@ -170,7 +170,7 @@ class ASI(aps20Detector):
         # The detector attributes specific for the detector.
         # Can include data directory, whitefield_filename, etc.
         # keep parameters that are relevant to the detector
-        self.data_dir = params.get('data_dir')
+        self.data_dir = params.get('data_dir', None)
         self.Imult = params.get('Imult', ASI.Imult)
         # init darkfield and whitefield if given
         if 'whitefield_filename' in params:

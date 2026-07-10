@@ -147,8 +147,12 @@ def create_instr(configs, **kwargs):
     det_params = configs['config_instr']
     if 'config_prep' in  configs:
         det_params.update(configs['config_prep'])
-    # check for parameters, it will raise exception if not success
-    det.check_mandatory_params(det_name, det_params)
+
+    need_det = kwargs.get('need_det', False)
+    if need_det:
+        # check only if detector is created for reading data
+        # check for parameters, it will raise exception if failed
+        det.check_mandatory_params(det_name, det_params)
     det_obj = det.create_detector(det_name, det_params)
 
     instr = Instrument_aps_1ide(det_obj, diff_obj, configs)

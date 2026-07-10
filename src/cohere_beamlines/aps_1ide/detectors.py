@@ -225,7 +225,7 @@ class BSE(aps1Detector):
         # The detector attributes specific for the detector.
         # Can include data directory, whitefield_filename, etc.
         # keep parameters that are relevant to the detector
-        self.data_dir = params.get('data_dir')
+        self.data_dir = params.get('data_dir', None)
         if 'darkfield_filename' in params:
            self.darkfield = ut.read_tif(params.get('darkfield_filename')).astype(np.int32)
         # min_frames, exclude_scanc, roi, max_crop are saved in common.det.Detectors superclass

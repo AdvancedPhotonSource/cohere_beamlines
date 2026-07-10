@@ -132,10 +132,12 @@ class Detector_e4m(petra10Detector):
         # The detector attributes for background/whitefield/etc need to be set to read frames
         # this will capture things like data directory, whitefield_filename, etc.
         # keep parameters that are relevant to the detector
-        self.data_dir = params.get('data_dir')
-        self.sample = params.get('sample')
-        self.darkfield = np.load(params['darkfield_filename'])
-        self.darkfield = np.where(self.darkfield > 0, 0, 1)
+        self.data_dir = params.get('data_dir', None)
+        self.sample = params.get('sample', None)
+        darkfield_filename = params.get('darkfield_filename', None)
+        if darkfield_filename is not None:
+            self.darkfield = np.load(params['darkfield_filename'])
+            self.darkfield = np.where(self.darkfield > 0, 0, 1)
         if params.get('clear_asicbounds', True):
             for c in self.module_x:
                 for x in self.asic_x:
@@ -147,8 +149,9 @@ class Detector_e4m(petra10Detector):
         self.det_roi = [r[0], r[2], r[1], r[3]]
         self.beam_zero = params.get('beam_zero', [(r[2] - r[0]) // 2 + r[0], (r[3] - r[1]) // 2 + r[1]])
         self.slice = np.s_[:, r[1]:r[3], r[0]:r[2]]
-        self.darkfield = self.darkfield[np.s_[r[1]:r[3], r[0]:r[2]]]
-        self.darkfield = self.darkfield.T
+        if darkfield_filename is not None:
+            self.darkfield = self.darkfield[np.s_[r[1]:r[3], r[0]:r[2]]]
+            self.darkfield = self.darkfield.T
         # min_frames, exclude_scanc, roi, max_crop are saved in common.det.Detectors superclass
 
 
@@ -231,8 +234,8 @@ class Detector_e2500(petra10Detector):
         # The detector attributes for background/whitefield/etc need to be set to read frames
         # this will capture things like data directory, whitefield_filename, etc.
         # keep parameters that are relevant to the detector
-        self.data_dir = params.get('data_dir')
-        self.sample = params.get('sample')
+        self.data_dir = params.get('data_dir', None)
+        self.sample = params.get('sample', None)
         r = self.ROIS[params.get('detector_module', 0)]
         self.det_roi = [r[0], r[2], r[1], r[3]]
         self.slice = np.s_[:, r[1]:r[3], r[0]:r[2]]

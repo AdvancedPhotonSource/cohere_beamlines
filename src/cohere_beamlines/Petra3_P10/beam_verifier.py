@@ -16,31 +16,14 @@ __docformat__ = 'restructuredtext en'
 __all__ = ['verify']
 
 
-config_prep_error = {'File':['No configuration file',
-                             'cannot read configuration file',
-                             'Parsing error, check parenthesis,quotation syntax'],
-                     'Excludescans':['exclude scans should be a list'],
-                     'MinFiles':['min_frames should be int',
-                                 'min_frames parameter parsing error'],
-                     'Maxcrop':['max_crop should be a list of two int'],
-                     }
-config_disp_error = {'File':['No configuration file',
-                             'Cannot read configuration file',
-                             'Parsing error, check parenthesis,quotation syntax'],
-                     'Resultsdir':['results_dir parameter should be string'],
-                     'Crop':['crop should be list',
-                             'crop should be a list of int or float'],
-                     'Rampups':['rampups should be int']}
-
 config_instr_error = {
                        'Detector':['detector parameter should be string'],
-                       'Datadir': ['data_dir parameter should be string',
-                                   'missing mandatory parameter data_dir'],
+                       'Datadir': ['data_dir parameter should be string'],
                        'Darkfield': ['darkfield_filename parameter should be string',
                                      'darkfield_filename parameter parsing error'],
                        'Detectormodule': ['detector_module parameter should be int',
                                           'detector_module should be smaller or equal 8',
-                                          'missing mandatory detector_module parameter'],
+                                          'missing detector_module parameter'],
                        'Energy':['energy should be float',
                                  'energy parameter parsing error'],
                        'Delta':['delta should be float',
@@ -249,11 +232,6 @@ def ver_config_instr(config_map):
             error_message = get_config_error_message(fname, config_map_file, config_parameter, config_error)
             print(error_message)
             return error_message
-    else:
-        config_error = 1
-        error_message = get_config_error_message(fname, config_map_file, config_parameter, config_error)
-        print (error_message)
-        return (error_message)
 
 
     config_parameter = 'Darkfield'

@@ -19,7 +19,6 @@ class aps34Detector(Detector):
 
     def __init__(self, params):
         super(aps34Detector, self).__init__(params)
-#        print(params)
 
     def dirs4scans(self, scans):
         """
@@ -156,7 +155,7 @@ class Detector_34idcTIM1(aps34Detector):
         super(Detector_34idcTIM1, self).__init__(params)
         # The detector attributes for background/whitefield/etc need to be set to read frames
         # this will capture things like data directory, darkfield_filename, etc.
-        self.data_dir = params.get('data_dir')  # mandatory
+        self.data_dir = params.get('data_dir', None)
         # the det_roi is detector roi selecting area that was captured, typically parsed from spec file.
         # It is specific to 34idc.
         if 'det_roi' in params:
@@ -228,7 +227,7 @@ class Detector_34idcTIM2(aps34Detector):
         # The detector attributes for background/whitefield/etc need to be set to read frames
         # this will capture things like data directory, whitefield_filename, etc.
         # keep parameters that are relevant to the detector
-        self.data_dir = params.get('data_dir')
+        self.data_dir = params.get('data_dir', None)
         # the det_roi is detector roi selecting area that was captured, typically parsed from spec file.
         # It is specific to 34idc.
         if 'det_roi' in params:

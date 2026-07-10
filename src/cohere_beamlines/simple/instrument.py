@@ -1,26 +1,21 @@
-import cohere_beamlines.simple.diffractometers as diff
+from cohere_beamlines.simple.diffractometers import Diffractometer
+from cohere_beamlines.common.instr import Instrument
 import cohere_beamlines.simple.detectors as det
 
 
-class Instrument:
+class Instrument_simple(Instrument):
     """
       This class encapsulates istruments: diffractometer and detector used for that experiment.
-
-      A detector class contains interfaces to retrieve data captured by the detector. A correction
-      specific to the detector may be used.
-      A diffractometer class provides interface to obtain the geometry that was in effect during the experiment.
-      The geometry allows visualization of reconstructed object.
+      It provides interface to get the classes encapsulating the diffractometer and detector.
     """
-
-    def __init__(self, det_obj, diff_obj):
+    def __init__(self, det_obj, diff_obj, conf_params):
         """
         Constructor
 
         :param det_obj: detector object, can be None
         :param diff_obj: diffractometer object, can be None
         """
-        self.det_obj = det_obj
-        self.diff_obj = diff_obj
+        super(Instrument_simple, self).__init__(det_obj, diff_obj, conf_params)
 
 
     def datainfo4scans(self):
@@ -63,37 +58,20 @@ class Instrument:
         return self.det_obj.get_scan_array(scan)
 
 
-    def get_geometry(self, shape, scan, conf_maps):
+    def parse_metadata(self, scan, **kwargs):
         """
-        Calculates geometry based on diffractometer's and detctor's attributes and experiment parameters.
-
-        Geometry may be different by scan and depends on array shape.
-        The parameters needed for geometry calculation can be parsed by some mechanism (from spec or from
-        hdf5 file or other).
-        Another way to pass parameters is through kwargs.
-
-        The parameters can include for example delta, gamma, theta, phi, chi, scanmot, scanmot_del, detdist,
-        detector_name, energy, wave length.
+        Returns empty dict, as for simple beamline there is no metadata, all params are configured.
 
         Parameters
         ----------
-        :param  : tuple
-            shape of reconstructed array
-        :param  : int
-            scan for which the geometry applies
-        :param  : conf_params
-            parameters parsed from config file
+        scan : int
+            scan number to use to recover the saved measurements
 
-        :return: tuple of arrays containing geometry in reciprocal space and direct space
-            (Trecip, Tdir)
+        Returns
+        -------
+        metadata
         """
-        if self.diff_obj is None:
-            raise RuntimeError
-
-        # get needed parameters into one flat dict
-        conf_params = conf_maps['config_instr']
-        conf_params['binning'] = conf_maps['config_data'].get('binning', [1,1,1])
-        return self.diff_obj.get_geometry(shape, scan, conf_params, det)
+        return {}
 
 
 def create_instr(configs, **kwargs):
@@ -108,28 +86,18 @@ def create_instr(configs, **kwargs):
     Object or None
         Instrument object or None
     """
-    det_obj = None
-    diff_obj = None
+    diff_obj = Diffractometer()
     instr_config_params = configs['config_instr']
     det_name = instr_config_params.get('detector', None)
     if det_name is None:
         raise ValueError('detector name not configured in config_instr')
 
-    if 'need_detector' in kwargs and kwargs['need_detector']:
-        det_params = instr_config_params
-        if 'config_prep' in configs:
-            det_params.update(configs['config_prep'])
+    det_params = instr_config_params
+    if 'config_prep' in configs:
+        det_params.update(configs['config_prep'])
+    det_obj = det.create_detector(det_name, det_params)
 
-        det_obj = det.create_detector(det_name, det_params)
-
-    diff_name = instr_config_params.get('diffractometer', None)
-    if diff_name is None:
-        msg = 'detector name not configured in config_instr'
-        raise ValueError(msg)
-
-    diff_obj = diff.create_diffractometer(diff_name, instr_config_params)
-
-    instr = Instrument(det_obj, diff_obj)
+    instr = Instrument_simple(det_obj, diff_obj, configs)
     main_conf = configs['config']
     if 'scan' in main_conf:
         instr.scan_ranges = [[int(main_conf['scan']), int(main_conf['scan'])]]

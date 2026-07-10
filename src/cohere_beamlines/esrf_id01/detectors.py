@@ -84,15 +84,11 @@ class Detector_mpxgaas(esrf1Detector):
     def __init__(self, conf_params):
         super(Detector_mpxgaas, self).__init__(conf_params)
 
-        self.h5file = conf_params.get("h5file")
-        # # min_frames, exclude_scanc, roi, max_crop are saved in common.det.Detectors superclass
+        self.h5file = conf_params.get("h5file", None)
+        # min_frames, exclude_scanc, roi, max_crop are saved in common.det.Detectors superclass
 
 
 dets = {detector.name: detector for detector in esrf1Detector.__subclasses__()}
 
 def create_detector(det_name, params):
    return dets[det_name](params)
-
-
-def check_mandatory_params(det_name, params):
-    return dets[det_name].check_mandatory_params(params)

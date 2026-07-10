@@ -157,8 +157,13 @@ def create_instr(configs, **kwargs):
     # add parameters from the config_prep
     if 'config_prep' in configs:
         config_params.update(configs['config_prep'])
-    # check for parameters
-    det.check_mandatory_params(det_name, config_params)
+
+    need_det = kwargs.get('need_det', False)
+    if need_det:
+        # check only if detector is created for reading data
+        # check for parameters, it will raise exception if failed
+        det.check_mandatory_params(det_name, config_params)
+
     det_obj = det.create_detector(det_name, config_params)
 
     instr = Instrument_Petra3_P10(det_obj, diff_obj, configs)

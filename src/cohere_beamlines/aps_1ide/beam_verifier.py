@@ -16,27 +16,12 @@ __docformat__ = 'restructuredtext en'
 __all__ = ['verify']
 
 
-config_prep_error = {'File':['No configuration file',
-                             'cannot read configuration file',
-                             'Parsing error, check parenthesis,quotation syntax'],
-                     'Excludescans':['exclude scans should be a list'],
-                     'MinFiles':['min_frames should be int',
-                                 'min_frames parameter parsing error']}
-config_disp_error = {'File':['No configuration file',
-                             'Cannot read configuration file',
-                             'Parsing error, check parenthesis,quotation syntax'],
-                     'Resultsdir':['results_dir parameter should be string'],
-                     'Crop':['crop should be list',
-                             'crop should be a list of int or float'],
-                     'Rampups':['rampups should be int']}
-
 config_instr_error = {
                        'Specfile': ['missing specfile parameter, configuration parameters will be used',
                                     'specfile parameter should be string',
                                     'specfile parameter parsing error'],
                        'Roi': ['roi parameter should be a list of int'],
-                       'Datadir': ['data_dir parameter should be string',
-                                   'missing mandatory parameter data_dir'],
+                       'Datadir': ['data_dir parameter should be string'],
                        'Darkfield': ['darkfield_filename parameter should be string',
                                      'darkfield_filename parameter parsing error'],
                        'Whitefield': ['whitefield_filename parameter should be string',
@@ -327,11 +312,6 @@ def ver_config_instr(config_map):
             error_message = get_config_error_message(fname, config_map_file, config_parameter, config_error)
             print(error_message)
             return error_message
-    else:
-        config_error = 1
-        error_message = get_config_error_message(fname, config_map_file, config_parameter, config_error)
-        print (error_message)
-        return (error_message)
 
     config_parameter = 'Darkfield'
     if 'darkfield_filename' in config_map:

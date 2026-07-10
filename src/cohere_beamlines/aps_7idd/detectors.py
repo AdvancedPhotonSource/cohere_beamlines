@@ -157,7 +157,7 @@ class Detector_7iddrobot(aps7Detector):
         super(Detector_7iddrobot, self).__init__(params)
         # The detector attributes for background/whitefield/etc need to be set to read frames
         # this will capture things like data directory, darkfield_filename, etc.
-        self.data_dir = params.get('data_dir') # mandatory
+        self.data_dir = params.get('data_dir', None)
         if 'darkfield_filename' in params:
             self.darkfield = ut.read_tif(params.get('darkfield_filename'))
         # min_frames, exclude_scanc, roi, max_crop are saved in common.det.Detectors superclass

@@ -229,8 +229,12 @@ def create_instr(configs, **kwargs):
     detector = det_params.get('detector', None)
     if detector is None:
         raise ValueError('detector name not configured and could not be parsed')
-    # check for parameters, it will raise exception if failed
-    det.check_mandatory_params(detector, det_params)
+
+    need_det = kwargs.get('need_det', False)
+    if need_det:
+        # check only if detector is created for reading data
+        # check for parameters, it will raise exception if failed
+        det.check_mandatory_params(detector, det_params)
 
     det_obj = det.create_detector(detector, det_params)
     if det_obj is None:
