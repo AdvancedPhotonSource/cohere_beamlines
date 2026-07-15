@@ -17,7 +17,7 @@ __all__ = ['verify']
 
 
 config_instr_error = {
-                       'Specfile': ['missing specfile parameter. The program will use detector configured in config_instr and roi in config_prep',
+                       'Specfile': ['missing specfile parameter. The program will use detector and det_roi configured in config_instr',
                                     'specfile parameter should be string',
                                     'specfile parameter parsing error'],
                        'Roi': ['det_roi parameter should be a list of int'],

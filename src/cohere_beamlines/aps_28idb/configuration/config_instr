@@ -1,0 +1,44 @@
+specfile = "SPECFILE"
+                                            // optional (but typically needed)
+                                            // specfile can be specified on the command line argument to setup_34idc.py or here.
+
+data_dir = "ADDATADIR"
+                                            // The directory containing raw data. This directory will have several
+                                            // subdirectories each containing .tif data files. Each subdirectory
+                                            // represents separate scan and is numbered with the scan index.
+
+darkfield_filename = "DARKFIELD"
+                                            // Dark file taken to clean bad pixels or correct background in CCD.
+                                            // Depends on detector if used.
+
+whitefield_filename = "WHITEFIELD"
+                                            // White file to correct background in CCD.
+                                            // Depends on detector if used.
+
+//Imult = 10000
+                                            // Optional, defaults to the average of the whitefield.
+                                            // A multiplication factor used to renormalize the whitefield correction.
+
+detector = "s28eiger2-si"
+                                           // detector name
+
+detdist = 1100.0
+                                           // camera distance (mm)
+
+//det_roi = [0,256,0,256]
+                                            // Region of interest, an area covered by detector.
+                                            // Read from specfile.
+
+energy = 8.94303
+                                            // wavelength
+
+// typically these parameters will be parsed from spec file
+// the parsed parameters will be overridden if they are configured
+
+//nu = 0.0928
+//del = 0.0
+//mu = -0.00035
+//eta = 15.181
+//chi = 0.0
+//phi = 5e-05
+//scanmot = "eta"

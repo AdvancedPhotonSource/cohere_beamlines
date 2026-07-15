@@ -134,7 +134,7 @@ class SubInstrTab():
         self.scanmot = QLineEdit()
         self.scanmot.setModified(False)
         spec_layout.addRow("scan motor", self.scanmot)
-        self.detector = QLineEdit()
+ #       self.detector = QLineEdit()
 
         self.energy.textChanged.connect(lambda: set_overriden(self.energy))
         self.delta.textChanged.connect(lambda: set_overriden(self.delta))
@@ -348,7 +348,6 @@ class InstrTab(QWidget):
         self.Imult = QLineEdit()
         gen_layout.addRow("Imult", self.Imult)
         self.detector = QLineEdit()
-        self.detector.setModified(False)
         gen_layout.addRow("detector", self.detector)
         self.det_roi = QLineEdit()
         gen_layout.addRow("detector area (det_roi)", self.det_roi)
@@ -406,7 +405,7 @@ class InstrTab(QWidget):
                 self.data_dir_button.setStyleSheet("Text-align:left")
                 self.data_dir_button.setText(conf_map['data_dir'])
             else:
-                msg_window(f'The data_dir directory in config_prep file {conf_map["data_dir"]} does not exist')
+                msg_window(f'The data_dir directory in config_instr file {conf_map["data_dir"]} does not exist')
         else:
             self.data_dir_button.setText('')
         if 'darkfield_filename' in conf_map:
@@ -414,7 +413,7 @@ class InstrTab(QWidget):
                 self.dark_file_button.setStyleSheet("Text-align:left")
                 self.dark_file_button.setText(conf_map['darkfield_filename'])
             else:
-                msg_window(f'The darkfield file {conf_map["darkfield_filename"]} in config_prep file does not exist, getting from git repository')
+                msg_window(f'The darkfield file {conf_map["darkfield_filename"]} in config_instr file does not exist, getting from git repository')
                 self.dark_file_button.setText('')
         else:
             self.dark_file_button.setText('')
@@ -424,11 +423,16 @@ class InstrTab(QWidget):
                 self.white_file_button.setText(conf_map['whitefield_filename'])
             else:
                 self.white_file_button.setText('')
-                msg_window(f'The whitefield file {conf_map["whitefield_filename"]} in config_prep file does not exist, getting from git repository')
+                msg_window(f'The whitefield file {conf_map["whitefield_filename"]} in config_instr file does not exist, getting from git repository')
         else:
             self.white_file_button.setText('')
         if 'Imult' in conf_map:
             self.Imult.setText(str(conf_map['Imult']).replace(" ", ""))
+        if 'detector' in conf_map:
+            self.detector.setText(str(conf_map['detector']).replace(" ", ""))
+            self.detector.setStyleSheet('color: black')
+            self.detector.setModified(True)
+
         if 'det_roi' in conf_map:
             self.det_roi.setText(str(conf_map['det_roi']).replace(" ", ""))
             self.det_roi.setStyleSheet('color: black')
@@ -588,6 +592,8 @@ class InstrTab(QWidget):
             conf_map['whitefield_filename'] = str(self.white_file_button.text().strip())
         if len(self.Imult.text()) > 0:
             conf_map['Imult'] = ast.literal_eval(str(self.Imult.text()).replace(os.linesep,''))
+        if self.detector.isModified() and len(self.detector.text()) > 0:
+            conf_map['detector'] = str(self.detector.text())
         if self.det_roi.isModified() and len(self.det_roi.text()) > 0:
             conf_map['det_roi'] = ast.literal_eval(str(self.det_roi.text()).replace(os.linesep,''))
         if len(self.beam_zero.text()) > 0:

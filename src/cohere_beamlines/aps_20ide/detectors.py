@@ -91,11 +91,9 @@ class aps20Detector(Detector):
         """
         Reads/loads raw data file and applies correction. The correction is detector dependent.
 
-        Reads raw data from a directory. The directory name is scan_info. The raw data is in form of 2D
-        frames. The frames are read, corrected and stocked into 3D data
-        This implementation is based on aps_34idc beamline.
+        Reads raw data from a h5 file. The file name is in scan scan_info.
 
-        :param scan_info: info allowing detector to retrieve data for a scan
+        :param scan_info: h5 file that contains raw data
         :return: corrected data array
         """
         h5file = scan_info

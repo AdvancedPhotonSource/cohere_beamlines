@@ -3,13 +3,13 @@
 #                                                                         #
 # See LICENSE file.                                                       #
 # #########################################################################
-
+import hdf5plugin
 import numpy as np
 import os
-import re
 import cohere_core.utilities as ut
 from cohere_beamlines.common.det import Detector
 from abc import abstractmethod
+import h5py
 
 
 class aps28Detector(Detector):
@@ -20,9 +20,9 @@ class aps28Detector(Detector):
     def __init__(self, params):
         super(aps28Detector, self).__init__(params)
 
-    def dirs4scans(self, scans):
+    def files4scans(self, scans):
         """
-        Finds directories with data that correspond to given scans or scan ranges.
+        Finds data files that correspond to given scans or scan ranges.
 
         :param scans : list
             list of sub-lists defining scan ranges, ordered. For single scan a range has the same scan as beginning and end.
@@ -41,75 +41,70 @@ class aps28Detector(Detector):
          within scan ranges.
         """
         # create empty results list that allocates a sub-list for each scan range
-        scans_dirs_ranges = [[] for _ in range(len(scans))]
-        sr_idx = 0
-        scan_range = scans[sr_idx]
-        scans_dirs = scans_dirs_ranges[sr_idx]
+        first_scan = scans[0][0]
+        last_scan = scans[-1][-1]
+        scans_files = {}
+        for scanfile in sorted(os.listdir(self.data_dir)):
+            scanfile_full = ut.join(self.data_dir, scanfile)
+            if not os.path.isfile(scanfile_full) or not scanfile_full.endswith('.h5'):
+                continue
+            try:
+                # # first chop off the "_00000.h5" and get the scan number
+                # scan = scanfile[:-8]
+                # scan = int(scanfile[:-3].split('_')[-1])
+                scan = int(scanfile.split('.')[0].split('_')[-2][1:])
+            except:
+                continue
+            if scan < first_scan:
+                continue
+            elif scan > last_scan:
+                break
+            scans_files[scan] = scanfile_full
+            if scan == last_scan:
+                break
 
-        # check for directories
-        for scandir in sorted(os.listdir(self.data_dir)):
-            scandir_full = ut.join(self.data_dir, scandir)
-            if os.path.isdir(scandir_full):
-                last_digits = re.search(r'\d+$', scandir)
-                if last_digits is not None:
-                    scan = int(last_digits.group())
-                else:
-                    continue
-                if scan < scan_range[0]:
-                    continue
-                elif scan <= scan_range[-1]:
-                    # scan within range
-                    # before adding scan check if there is enough data files
-                    if len(os.listdir(scandir_full)) >= self.min_frames and scan not in self.exclude_scans:
-                        scans_dirs.append((scan, scandir_full))
-                    if scan == scan_range[-1]:
-                        sr_idx += 1
-                        if sr_idx > len(scans) - 1:
-                            break
-                        scan_range = scans[sr_idx]
-                        scans_dirs = scans_dirs_ranges[sr_idx]
+        # remove excluded scans
+        scans_files = {key: value for key, value in scans_files.items() if key not in self.exclude_scans}
 
-                elif scan > scan_range[-1]:
-                    sr_idx += 1
-                    if sr_idx > len(scans) - 1:
-                        break
-                    scan_range = scans[sr_idx]
-                    scans_dirs = scans_dirs_ranges[sr_idx]
+        # remove scans that have less frames than configured.
+        if self.min_frames > 0:
+            short_in_frames = []
+            for (scan, fn) in scans_files.items():
+                # open file, check number of
+                with h5py.File(fn, "r") as h5f:
+                    if h5f['entry/data/data'].shape[0] < self.min_frames:
+                        print(f'data for scan {scan} contains fewer than {self.min_frames} frames.')
+                        short_in_frames.append(scan)
+            if len(short_in_frames) > 0:
+                scans_files = {key: value for key, value in scans_files.items() if key not in short_in_frames}
+
+        # distribute by ranges
+        scans_dirs_ranges = [[(k, v) for k, v in scans_files.items() if k >= scans[i][0] and k <= scans[i][-1]] for i in
+                             range(len(scans))]
 
         # remove empty sub-lists
         scans_dirs_ranges = [e for e in scans_dirs_ranges if len(e) > 0]
         return scans_dirs_ranges
 
+
     def get_scan_array(self, scan_info):
         """
         Reads/loads raw data file and applies correction.
 
-        Reads raw data from a directory. The directory name is scan_info. The raw data is in form of 2D
-        frames. The frames are read, corrected and stocked into 3D data
+        Reads raw data from a h5 file. The file name is in scan scan_info.
 
-        :param scan_info: directory where the detector to retrieve data for a scan
+        :param scan_info: h5 file that contains raw data
         :return: corrected data array
         """
-        slices_files = {}
-        for file_name in os.listdir(scan_info):
-            if file_name.endswith('tif'):
-                fnbase = file_name[:-4]
-            else:
-                continue
-            # for aps_34idc the file names end with the slice number, followed by 'tif' extension
-            last_digits = re.search(r'\d+$', fnbase)
-            if last_digits is not None:
-                key = int(last_digits.group())
-                slices_files[key] = ut.join(scan_info, file_name)
+        h5file = scan_info
+        with h5py.File(h5file, "r") as h5f:
+            data = h5f['entry/data/data'][:].T
 
-        ordered_keys = sorted(list(slices_files.keys()))
-        ordered_slices = [self.correct_frame(slices_files[k]) for k in ordered_keys]
-
-        data = np.stack(ordered_slices, axis=-1)
         offset = [0, 0]
 
         if self.roi is not None:
             data, offset = self.get_roi_slice(data)
+        data = self.correct(data)
 
         if self.max_crop is not None:
             data, offset = self.get_max_crop_slice(data, offset)
@@ -127,7 +122,7 @@ class aps28Detector(Detector):
         """
 
     @abstractmethod
-    def correct_frame(self, frame):
+    def correct(self, data):
         """
         Applies the correction for detector.
 
@@ -144,8 +139,7 @@ class Detector_s28eiger2_si(aps28Detector):
     dims = (1028, 512)
     pixel = (75.0e-6, 75e-6)
     # pixelorientation = ('x+', 'y-')  # in xrayutilities notation
-    pixelorientation = ('x+', 'z-')  # in xrayutilities notation
-    det_dist = 1100  # in mm
+    pixelorientation = ('x-', 'z-')  # in xrayutilities notation
     darkfield = None
     data_dir = None
     Imult = 1.0
@@ -163,28 +157,41 @@ class Detector_s28eiger2_si(aps28Detector):
             self.det_roi = params.get('det_roi')
         if 'darkfield_filename' in params:
             self.darkfield = ut.read_tif(params.get('darkfield_filename'))
+        if 'whitefield_filename' in params:
+            self.whitefield = ut.read_tif(params.get('whitefield_filename'))
 
     # TIM1 only needs bad pixels deleted.  Even that is optional.
-    def correct_frame(self, filename):
+    def correct(self, data):
         """
-        Reads raw frame from a file, and applies correction for 34idcTIM1 detector, i.e. darkfield.
+        Gets raw data from a file, and applies correction for s28eiger2_si detector, i.e. darkfield.
         Parameters
         ----------
-        filename : str
-            slice data file name
+        data : ndarray
+            data array
         Returns
         -------
         frame : ndarray
             frame after correction
         """
-        roislice1 = slice(self.det_roi[0], self.det_roi[0] + self.det_roi[1])
-        roislice2 = slice(self.det_roi[2], self.det_roi[2] + self.det_roi[3])
-        frame = ut.read_tif(filename)
-
         if self.darkfield is not None:
-            frame = np.where(self.darkfield[roislice1, roislice2] > 1, 0.0, frame)
+            if len(self.darkfield.shape) == 2:
+                cor = self.darkfield[:, :, np.newaxis]
+            else:
+                cor = self.darkfield
+            data = data * cor
 
-        return frame
+        if self.whitefield is not None:
+            if len(self.whitefield.shape) == 2:
+                cor = self.whitefield[:, :, np.newaxis]
+            else:
+                cor = self.whitefield
+            data = data / cor * self.Imult
+        else:
+            pass
+
+        data = np.nan_to_num(data)
+
+        return data
 
     def get_det_roi(self):
         return self.det_roi[:4]
@@ -206,18 +213,6 @@ class Detector_s28eiger2_si(aps28Detector):
             raise ValueError(msg)
 
 
-    def get_realpixelpos(self, rawpixel):
-        # Map a ROI-relative pixel back to absolute detector coords, adding the
-        # seam size to the pixel position if the pixel is after the seam.
-        # det_roi is (start, size, start, size), so the per-axis starts are [0] and [2].
-        # Looping over the two axes maintains consistency across axes. hardcoding midpoint is
-        # not ideal, but future development should look into it, right now this works.
-        starts = (self.det_roi[0], self.det_roi[2])
-        return [rawpixel[ax] + starts[ax] + (self.seamsize[ax] if rawpixel[ax] >= 256 else 0)
-                for ax in range(2)]
-
-
-    # frame here can also be a 3D array.
     def insert_seam(self, arr):
         """
         Inserts rows/columns correction in a frame for 34idcTIM2 detector.
@@ -314,24 +309,24 @@ class Detector_s28eiger2_si(aps28Detector):
             msg = f'data_dir directory{data_dir} does not exist.'
             raise ValueError(msg)
 
-        if 'whitefield_filename' not in params:
-            msg = 'whitefield_filename parameter not configured, mandatory for 34idcTIM2 detector.'
-            raise ValueError(msg)
-        whitefield = params['whitefield_filename']
-        if not os.path.isfile(whitefield):
-            msg = f'whitefield_filename file {whitefield} does not exist.'
-            raise ValueError(msg)
+        # if 'whitefield_filename' not in params:
+        #     msg = 'whitefield_filename parameter not configured, mandatory for 34idcTIM2 detector.'
+        #     raise ValueError(msg)
+        # whitefield = params['whitefield_filename']
+        # if not os.path.isfile(whitefield):
+        #     msg = f'whitefield_filename file {whitefield} does not exist.'
+        #     raise ValueError(msg)
+        #
+        # if 'darkfield_filename' not in params:
+        #     msg = 'darkfield_filename parameter not configured, mandatory for 34idcTIM2 detector.'
+        #     raise ValueError(msg)
+        # darkfield = params['darkfield_filename']
+        # if not os.path.isfile(darkfield):
+        #     msg = f'darkfield_filename file {darkfield} does not exist.'
+        #     raise ValueError(msg)
 
-        if 'darkfield_filename' not in params:
-            msg = 'darkfield_filename parameter not configured, mandatory for 34idcTIM2 detector.'
-            raise ValueError(msg)
-        darkfield = params['darkfield_filename']
-        if not os.path.isfile(darkfield):
-            msg = f'darkfield_filename file {darkfield} does not exist.'
-            raise ValueError(msg)
 
-
-dets = {detector.name: detector for detector in aps34Detector.__subclasses__()}
+dets = {detector.name: detector for detector in aps28Detector.__subclasses__()}
 
 
 def create_detector(det_name, params):
