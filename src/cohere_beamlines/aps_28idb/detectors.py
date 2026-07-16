@@ -138,7 +138,6 @@ class Detector_s28eiger2_si(aps28Detector):
     name = "s28eiger2-si"
     dims = (1028, 512)
     pixel = (75.0e-6, 75e-6)
-    # pixelorientation = ('x+', 'y-')  # in xrayutilities notation
     pixelorientation = ('x-', 'z-')  # in xrayutilities notation
     darkfield = None
     data_dir = None
@@ -212,85 +211,6 @@ class Detector_s28eiger2_si(aps28Detector):
             msg = f'data_dir directory{data_dir} does not exist.'
             raise ValueError(msg)
 
-
-    def insert_seam(self, arr):
-        """
-        Inserts rows/columns correction in a frame for 34idcTIM2 detector.
-        Parameters
-        ----------
-        arr : ndarray
-            raw frame
-        Returns
-        -------
-        frame : ndarray
-            frame after insering rows/columns
-        """
-        # Need to break this out.  When aligning multi scans the insert will mess up the aligns
-        # or maybe we just need to re-blank the seams after the aligns?
-        # I can't decide if the seams are a detriment to the alignment.  might need to try some.
-        s1range = range(self.det_roi[0], self.det_roi[0] + self.det_roi[1])
-        s2range = range(self.det_roi[2], self.det_roi[2] + self.det_roi[3])
-        dims = arr.shape
-        seam_added = False
-
-        # get the col that start at det col 256 in the det_roi
-        try:
-            i1 = s1range.index(256)  # if not in range try will except
-            if i1 != 0:
-                frame = np.insert(arr, i1, np.zeros((4, dims[0])), axis=0)
-                seam_added = True
-            # frame=np.insert(normframe, i1, np.zeros((5,dims[0])),axis=0)
-            else:
-                frame = arr
-        except:
-            frame = arr  # if there's no insert on dim1 need to copy to frame
-
-        try:
-            i2 = s2range.index(256)
-            if i2 != 0:
-                frame = np.insert(frame, i2, np.zeros((5, dims[0] + 4)), axis=1)
-                seam_added = True
-        except:
-            # if there's no insert on dim2 thre's nothing to do
-            pass
-
-        return frame, seam_added
-
-    # This is needed if the seam has already been inserted and shifts have moved intensity
-    # into the seam.  Found that alignment of data sets was best done with the seam inserted.
-    def clear_seam(self, arr):
-        """
-        Removes rows/columns correction from a frame for 34idcTIM2 detector.
-        Parameters
-        ----------
-        arr : ndarray
-            frame to remove seam
-        roi : list
-            detector area used to take image. If None the entire detector area will be used.
-        Returns
-        -------
-        arr : ndarray
-            frame after removing rows/columns
-        """
-        # modify the slices if 256 is in roi
-        s1range = range(self.det_roi[0], self.det_roi[0] + self.det_roi[1])
-        s2range = range(self.det_roi[2], self.det_roi[2] + self.det_roi[3])
-        try:
-            i1 = s1range.index(256)  # if not in range try will except
-            if i1 != 0:
-                s1range[0] = slice(i1, i1 + 4)
-                arr[tuple(s1range)] = 0
-        except:
-            pass
-        try:
-            i2 = s2range.index(256)
-            if i2 != 0:
-                s2range[1] = slice(i2, i2 + 5)
-                arr[tuple(s2range)] = 0
-        except:
-            pass
-
-        return arr
 
     @staticmethod
     def check_mandatory_params(params):

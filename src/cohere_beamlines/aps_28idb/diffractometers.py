@@ -12,7 +12,6 @@ class Diffractometer(NamedTuple):
     Encapsulates CHEX diffractometer.
     """
     sampleaxes = ('z-', 'x+', 'y+', 'z-')  # in xrayutilities notation
-    #detectoraxes = ('z+', 'x+')
     detectoraxes = ('z-', 'x+')
     incidentaxis = (0, 1, 0)
     sampleaxes_name = ('Mu', 'Eta', 'Chi', 'Phi')

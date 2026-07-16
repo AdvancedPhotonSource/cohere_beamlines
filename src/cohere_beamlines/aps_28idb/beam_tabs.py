@@ -167,9 +167,9 @@ class SubInstrTab():
             override_item(self.energy, str(conf_map['energy']).replace(" ", ""))
         if 'del' in conf_map:
             override_item(self.delta, str(conf_map['del']).replace(" ", ""))
-        if 'Nu' in conf_map:
+        if 'nu' in conf_map:
             override_item(self.nu, str(conf_map['nu']).replace(" ", ""))
-        if 'Mu' in conf_map:
+        if 'mu' in conf_map:
             override_item(self.mu, str(conf_map['mu']).replace(" ", ""))
         if 'eta' in conf_map:
             override_item(self.eta, str(conf_map['eta']).replace(" ", ""))
