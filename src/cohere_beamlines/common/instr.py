@@ -59,7 +59,7 @@ class Instrument(ABC):
             print('energy not parsed from metadata and not configured')
             raise KeyError('energy not parsed from metadata and not configured')
         if 'scanmot_posns' not in params:
-            print('scanmot_posns not parsed from metadata')
+            print('scanmot_posns not parsed from metadata, will use scanmot_del if configured')
         for ax in self.diff_obj.sampleaxes_mne:
             if ax != params['scanmot']:
                 if ax not in params:
@@ -197,12 +197,16 @@ class Instrument(ABC):
         else:
             binning = [1,1,1]
 
-        roi = [max_ind[0] - 1, max_ind[0] + 1,
-               max_ind[1] - 1, max_ind[1] + 1]
+        if max_ind is not None:
+            roi = [max_ind[0] - 1, max_ind[0] + 1,
+                   max_ind[1] - 1, max_ind[1] + 1]
 
-        slices = [max_ind[2], max_ind[2] + 1]
+            slices = [max_ind[2], max_ind[2] + 1]
 
-        q2, qc, params = self.get_q2(scan, slices, roi)
+            q2, qc, params = self.get_q2(scan, slices, roi)
+        else:
+            # an odd case where the pixelQ position is not recorded during preprocess and must be approximated
+            q2, qc, params = self.get_q2_no_pixelQ(conf_params)
 
         Astar = (q2[:, 0, 1, 0] - q2[:, 0, 0, 0]) * binning[0]
         Bstar = (q2[:, 0, 0, 1] - q2[:, 0, 0, 0]) * binning[1]
@@ -252,7 +256,7 @@ class Instrument(ABC):
         return (Trecip, Tdir, myq, ki, kf)
 
 
-    def get_geometry_no_beamline(self, scan, config_params, **kwargs):
+    def get_q2_no_pixelQ(self, config_params):
         """
         Calculates geometry based on diffractometer and detector attributes and experiment parameters for given scan.
 
@@ -268,6 +272,7 @@ class Instrument(ABC):
         params = config_params['config_instr']
         self.check_params(params)
         # check the scanmot parameter, if it's float or array
+        # can be different for different beamlines
         scanmot = params['scanmot'].strip()
         scanmot_pos = params[scanmot]
         if isinstance(scanmot_pos, float):
@@ -279,16 +284,11 @@ class Instrument(ABC):
         else:
             if isinstance(scanmot_pos, np.ndarray):
                 scanmot_pos = scanmot_pos.tolist()
-        # it should be converted list in any case
+        # it will be converted to a list in any case
         if len(scanmot_pos) > 2:
             # get the middle position and the next
             scanmot_pos = [scanmot_pos[len(scanmot_pos) // 2], scanmot_pos[len(scanmot_pos) // 2 + 1]]
         scanmot_arr = np.array(scanmot_pos)
-
-        if 'config_data' in config_params:
-            binning = config_params['config_data'].get('binning', [1,1,1])
-        else:
-            binning = [1,1,1]
 
         energy = params['energy']
         enfix = 1
@@ -332,48 +332,4 @@ class Instrument(ABC):
         # q2 will always be (3,N,detroi1,detroi3) (vec, scanarr, Npx, Npy)
         q2 = np.squeeze(np.array(qc.area(*args, deg=True)))
 
-        Astar = (q2[:, 0, 1, 0] - q2[:, 0, 0, 0]) * binning[0]
-        Bstar = (q2[:, 0, 0, 1] - q2[:, 0, 0, 0]) * binning[1]
-        Cstar = (q2[:, 1, 0, 0] - q2[:, 0, 0, 0]) * binning[2]
-
-        xtal = kwargs.get('xtal', False)
-        if xtal:
-            Trecip_cryst = np.zeros(9)
-            Trecip_cryst.shape = (3, 3)
-            Trecip_cryst[:, 0] = Astar * 10
-            Trecip_cryst[:, 1] = Bstar * 10
-            Trecip_cryst[:, 2] = Cstar * 10
-            return Trecip_cryst, None
-
-        params[scanmot] = scanmot_pos[0]
-        # transform to lab coords from sample reference frame
-        Astar = qc.transformSample2Lab(Astar, *[params[x] for x in diff.sampleaxes_mne]) * 10.0  # convert to inverse nm.
-        Bstar = qc.transformSample2Lab(Bstar, *[params[x] for x in diff.sampleaxes_mne]) * 10.0
-        Cstar = qc.transformSample2Lab(Cstar, *[params[x] for x in diff.sampleaxes_mne]) * 10.0
-
-        denom = np.dot(Astar, np.cross(Bstar, Cstar))
-        A = 2 * m.pi * np.cross(Bstar, Cstar) / denom
-        B = 2 * m.pi * np.cross(Cstar, Astar) / denom
-        C = 2 * m.pi * np.cross(Astar, Bstar) / denom
-
-        Trecip = np.zeros(9)
-        Trecip.shape = (3, 3)
-        Trecip[:, 0] = Astar
-        Trecip[:, 1] = Bstar
-        Trecip[:, 2] = Cstar
-
-        Tdir = np.zeros(9)
-        Tdir.shape = (3, 3)
-        Tdir = np.array((A, B, C)).transpose()
-
-        wl = xutilnoconf.en2lam(params['energy'])
-        kf = qc.getDetectorPos(*[params[x] for x in diff.detectoraxes_mne],
-                               deg=True)  # return in meters.  Not K as docs say.
-        kf_hat = kf / np.linalg.norm(kf)
-        ki = diff.incidentaxis
-        ki_hat = ki / np.linalg.norm(ki)
-        ki = 2 * np.pi / wl * ki_hat
-        kf = 2 * np.pi / wl * kf_hat
-        myq = kf - ki
-
-        return (Trecip, Tdir, myq, ki, kf)
+        return q2, qc, params
