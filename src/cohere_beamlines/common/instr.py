@@ -45,7 +45,7 @@ class Instrument(ABC):
         pass
 
 
-    def check_params(self, params, **kwargs):
+    def check_params(self, params, slices):
         if 'detector' not in params:
             print('detector name not parsed from metadata and not configured')
             raise KeyError('detector name not parsed from metadata and not configured')
@@ -58,8 +58,12 @@ class Instrument(ABC):
         if 'energy' not in params:
             print('energy not parsed from metadata and not configured')
             raise KeyError('energy not parsed from metadata and not configured')
-        if 'scanmot_posns' not in params:
-            print('scanmot_posns not parsed from metadata, will use scanmot_del if configured')
+        if slices is None:
+            if 'scanmot' not in params:
+                raise KeyError('scanmot not configured')
+        else:
+            if 'scanmot_posns' not in params:
+                print('scanmot_posns not parsed from metadata, for geometry will use scanmot if configured')
         for ax in self.diff_obj.sampleaxes_mne:
             if ax != params['scanmot']:
                 if ax not in params:
@@ -87,7 +91,7 @@ class Instrument(ABC):
         # override with config params if any
         params.update(self.conf_params['config_instr'])
         # exception is raised if missing parameter
-        self.check_params(params)
+        self.check_params(params, slices)
         params = self.convert_units(params)
         energy = params['energy']
         enfix = 1
@@ -104,12 +108,23 @@ class Instrument(ABC):
         else:
             scanen = np.array((energy,))
 
-        # define scan_mot array for the slices
-        scanmot_posns = params['scanmot_posns']
-        if slices == 'all':
-            scanmot_arr = np.array(scanmot_posns)
+        if slices is None:
+            if issubclass(type(params[scanmot]), list):  # calculate geometry using configuration
+                # configure if metadata can't be parsed or wishing to override
+                # has to be a list of two consecutive scan motor positions
+                scanmot_arr = np.array(params[scanmot])
+            else:
+                raise ValueError('prprocess.xlxs file not found, scanmot should be configured as list of two float values, corresponding to motor positions')
         else:
-            scanmot_arr = np.array([scanmot_posns[slice] for slice in slices])
+            # define scan_mot array for the slices
+            scanmot_posns = params['scanmot_posns']
+            if slices == 'all': # calculating RSM
+                scanmot_arr = np.array(scanmot_posns)
+            elif len(slices) == 1:  # calculating PixelQ
+                slice = slices[0]
+                scanmot_arr = np.array(scanmot_posns[slice])
+            else:  # calculate geometry using metadata
+                scanmot_arr = np.array([scanmot_posns[slice] for slice in slices])
 
         det = self.det_obj
         diff = self.diff_obj
@@ -200,13 +215,14 @@ class Instrument(ABC):
         if max_ind is not None:
             roi = [max_ind[0] - 1, max_ind[0] + 1,
                    max_ind[1] - 1, max_ind[1] + 1]
-
             slices = [max_ind[2], max_ind[2] + 1]
-
-            q2, qc, params = self.get_q2(scan, slices, roi)
         else:
-            # an odd case where the pixelQ position is not recorded during preprocess and must be approximated
-            q2, qc, params = self.get_q2_no_pixelQ(conf_params)
+            # The roi should be position of max intensity in raw data array. Choose arbitrary the beamzero.
+            roi = [self.det_obj.get_beamzero()[0] - 1, self.det_obj.get_beamzero()[0] + 1,
+                   self.det_obj.get_beamzero()[1] - 1, self.det_obj.get_beamzero()[1] + 1]
+            slices = None
+
+        q2, qc, params = self.get_q2(scan, slices, roi)
 
         Astar = (q2[:, 0, 1, 0] - q2[:, 0, 0, 0]) * binning[0]
         Bstar = (q2[:, 0, 0, 1] - q2[:, 0, 0, 0]) * binning[1]
@@ -221,9 +237,13 @@ class Instrument(ABC):
             Trecip_cryst[:, 2] = Cstar * 10
             return Trecip_cryst, None
 
-        # get the scan motor position corresponding to pixelQ
-        params[params['scanmot']] = params['scanmot_posns'][slices[0]]
-        # transform to lab coords from sample reference frame
+        if 'scanmot_posns' in params and slices is not None:
+            # get the scan motor position corresponding to max intensity
+            params[params['scanmot']] = params['scanmot_posns'][slices[0]]
+        else:
+            # the scanmot position is configured as a list
+            params[params['scanmot']] = params[params['scanmot']][0]
+            # transform to lab coords from sample reference frame
         Astar = qc.transformSample2Lab(Astar, *[params[x] for x in diff.sampleaxes_mne]) * 10.0  # convert to inverse nm.
         Bstar = qc.transformSample2Lab(Bstar, *[params[x] for x in diff.sampleaxes_mne]) * 10.0
         Cstar = qc.transformSample2Lab(Cstar, *[params[x] for x in diff.sampleaxes_mne]) * 10.0
@@ -254,82 +274,3 @@ class Instrument(ABC):
         myq = kf - ki
 
         return (Trecip, Tdir, myq, ki, kf)
-
-
-    def get_q2_no_pixelQ(self, config_params):
-        """
-        Calculates geometry based on diffractometer and detector attributes and experiment parameters for given scan.
-
-        Typically, the metadata such as detector axes, sample axes, camera distance, energy are parsed in a method
-        specific to the beamline. For no beamline the parameters are obtain from configuration.
-
-        :param scan: scan the geometry is calculated for
-        :param config_params: configuration parameters
-        :return: tuple, geometry information
-        """
-        # check if all required parameters are in config_instr in config_params dict
-        # if missing, the exception will stop processing
-        params = config_params['config_instr']
-        self.check_params(params)
-        # check the scanmot parameter, if it's float or array
-        # can be different for different beamlines
-        scanmot = params['scanmot'].strip()
-        scanmot_pos = params[scanmot]
-        if isinstance(scanmot_pos, float):
-            # need the scanmot_del (step) parameter, because only one position was given
-            if 'scanmot_del' not in params:
-                raise AttributeError('scanmot_del parameter is missing')
-            else:
-                scanmot_pos = [scanmot_pos, scanmot_pos + params['scanmot_del']]
-        else:
-            if isinstance(scanmot_pos, np.ndarray):
-                scanmot_pos = scanmot_pos.tolist()
-        # it will be converted to a list in any case
-        if len(scanmot_pos) > 2:
-            # get the middle position and the next
-            scanmot_pos = [scanmot_pos[len(scanmot_pos) // 2], scanmot_pos[len(scanmot_pos) // 2 + 1]]
-        scanmot_arr = np.array(scanmot_pos)
-
-        energy = params['energy']
-        enfix = 1
-        if m.floor(m.log10(energy)) < 3:
-            enfix = 1000
-        energy = energy * enfix  # x-ray energy in eV
-        params['energy'] = energy
-
-        if scanmot == 'en':
-            raise ValueError('energy scan currently not supported')
-        #     scanen = np.array((energy, energy + params['scanmot_del'] * enfix))
-        else:
-            scanen = np.array((energy,))
-
-        det = self.det_obj
-        diff = self.diff_obj
-
-        args = []
-        for sa in diff.sampleaxes_mne:
-            if sa == scanmot:
-                args.append(scanmot_arr)
-            else:
-                args.append(params[sa])
-        for da in diff.detectoraxes_mne:
-            args.append(params[da])
-
-        qc = xuexp.QConversion(diff.sampleaxes, diff.detectoraxes, diff.incidentaxis, en=scanen)
-
-        # The roi should be position of max intensity in raw data array. Since it is no beamline
-        # case, let choose arbitrary the beamzero.
-        roi = [det.get_beamzero()[0] - 1, det.get_beamzero()[0] + 1,
-               det.get_beamzero()[1] - 1, det.get_beamzero()[1] + 1]
-
-        qc.init_area(det.pixelorientation[0], det.pixelorientation[1],
-                     det.get_beamzero()[0], det.get_beamzero()[1],
-                     0, 0,  # the values are ignored if roi is given
-                     distance=params[diff.detectordist_mne],
-                     pwidth1=det.pixel[0], pwidth2=det.pixel[1],
-                     roi=roi)
-
-        # q2 will always be (3,N,detroi1,detroi3) (vec, scanarr, Npx, Npy)
-        q2 = np.squeeze(np.array(qc.area(*args, deg=True)))
-
-        return q2, qc, params
