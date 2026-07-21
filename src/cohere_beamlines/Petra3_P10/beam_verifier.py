@@ -26,19 +26,19 @@ config_instr_error = {
                                           'missing detector_module parameter'],
                        'Energy':['energy should be float',
                                  'energy parameter parsing error'],
-                       'Delta':['delta should be float',
+                       'Delta':['delta should be float or list of two floats',
                                 'delta parameter parsing error'],
-                       'Gamma':['gamma should be float',
+                       'Gamma':['gamma should be float or list of two floats',
                                 'gamma parameter parsing error'],
                        'Detdist':['detdist should be float or int',
                                   'detdist parameter parsing error'],
-                       'Mu':['mu should be float',
+                       'Mu':['mu should be float or list of two floats',
                               'mu parameter parsing error'],
-                       'Om': ['om should be float',
+                       'Om': ['om should be float or list of two floats',
                               'om parameter parsing error'],
-                       'Chi':['chi should be float',
+                       'Chi':['chi should be float or list of two floats',
                               'chi parameter parsing error'],
-                       'Phi':['phi should be float',
+                       'Phi':['phi should be float or list of two floats',
                               'phi parameter parsing error']
                        }
 
@@ -282,7 +282,7 @@ def ver_config_instr(config_map):
     config_parameter = 'Delta'
     if 'delta' in config_map:
         delta = config_map['delta']
-        if type(delta) != float:
+        if type(delta) != float and not ver_list_float('delta', delta):
             config_error = 0
             error_message = get_config_error_message(fname, config_map_file, config_parameter, config_error)
             print('delta should be float')
@@ -291,7 +291,7 @@ def ver_config_instr(config_map):
     config_parameter = 'Gamma'
     if 'gamma' in config_map:
         gamma = config_map['gamma']
-        if type(gamma) != float:
+        if type(gamma) != float and not ver_list_float('gamma', gamma):
             config_error = 0
             error_message = get_config_error_message(fname, config_map_file, config_parameter, config_error)
             print('gamma should be float')
@@ -308,8 +308,9 @@ def ver_config_instr(config_map):
 
     config_parameter = 'Mu'
     if 'mu' in config_map:
-        phi = config_map['mu']
-        if type(phi) != float:
+        mu = config_map['mu']
+        if type(mu) != float and not ver_list_float('mu', mu):
+            print('got er')
             config_error = 0
             error_message = get_config_error_message(fname, config_map_file, config_parameter, config_error)
             print('mu should be float')
@@ -317,8 +318,8 @@ def ver_config_instr(config_map):
 
     config_parameter = 'Om'
     if 'om' in config_map:
-        phi = config_map['om']
-        if type(phi) != float:
+        om = config_map['om']
+        if type(om) != float and not ver_list_float('om', om):
             config_error = 0
             error_message = get_config_error_message(fname, config_map_file, config_parameter, config_error)
             print('om should be float')
@@ -326,8 +327,8 @@ def ver_config_instr(config_map):
 
     config_parameter = 'Chi'
     if 'chi' in config_map:
-        phi = config_map['chi']
-        if type(phi) != float:
+        chi = config_map['chi']
+        if type(chi) != float and not ver_list_float('chi', chi):
             config_error = 0
             error_message = get_config_error_message(fname, config_map_file, config_parameter, config_error)
             print('chi should be float')
@@ -336,7 +337,7 @@ def ver_config_instr(config_map):
     config_parameter = 'Phi'
     if 'phi' in config_map:
         phi = config_map['phi']
-        if type(phi) != float:
+        if type(phi) != float and not ver_list_float('phi', phi):
             config_error = 0
             error_message = get_config_error_message(fname, config_map_file, config_parameter, config_error)
             print('phi should be float')

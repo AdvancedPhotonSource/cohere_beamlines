@@ -29,13 +29,13 @@ config_instr_error = {
                        'Detector':['detector parameter should be string'],
                        'Energy':['energy should be float',
                                  'energy parameter parsing error'],
-                       'Delta':['delta should be float',
+                       'Delta':['delta should be float or list of two floats',
                                 'delta parameter parsing error'],
-                       'Gamma':['gamma should be float',
+                       'Gamma':['gamma should be float or list of two floats',
                                 'gamma parameter parsing error'],
                        'Detdist':['detdist should be float',
                                   'detdist parameter parsing error'],
-                       'Dth':['dth should be float',
+                       'Dth':['dth should be float or list of two floats',
                               'dth parameter parsing error']
                     }
 
@@ -253,7 +253,7 @@ def ver_config_instr(config_map):
     config_parameter = 'Delta'
     if 'delta' in config_map:
         delta = config_map['delta']
-        if type(delta) != float:
+        if type(delta) != float and not ver_list_float('delta', delta):
             config_error = 0
             error_message = get_config_error_message(fname, config_map_file, config_parameter, config_error)
             print(error_message)
@@ -262,7 +262,7 @@ def ver_config_instr(config_map):
     config_parameter = 'Gamma'
     if 'gamma' in config_map:
         gamma = config_map['gamma']
-        if type(gamma) != float:
+        if type(gamma) != float and not ver_list_float('gamma', gamma):
             config_error = 0
             error_message = get_config_error_message(fname, config_map_file, config_parameter, config_error)
             print(error_message)
@@ -280,7 +280,7 @@ def ver_config_instr(config_map):
     config_parameter = 'Dth'
     if 'dth' in config_map:
         dth = config_map['dth']
-        if type(dth) != float:
+        if type(dth) != float and not ver_list_float('dth', dth):
             config_error = 0
             error_message = get_config_error_message(fname, config_map_file, config_parameter, config_error)
             print(error_message)

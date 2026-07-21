@@ -444,19 +444,19 @@ class InstrTab(QWidget):
         if self.add_config:
             self.extended.load_tab(conf_map)
 
-        if len(self.dark_file_button.text()) == 0 or len(self.white_file_button.text()) == 0:
-            # try to get the correction files from git repository
-            if len(self.spec_file_button.text()) > 0:
-                # This will get correction files (white, dark) from the cohere_beamlines repository on github
-                # To get the right files a timestamp must be known, so parse it from spec.
-                timestamp = common.get_specfile_timestamp(str(self.spec_file_button.text()))
-                detcorrectionsdir = os.path.join(Path(bl.__file__).parents[0], 'detector_corrections', str(self.detector.text()))
-                if len(self.dark_file_button.text()) == 0:
-                    darkfile = common.get_file_by_timestamp(detcorrectionsdir, timestamp, '*darkfield.tif')
-                    self.dark_file_button.setText(darkfile)
-                if len(self.white_file_button.text()) == 0:
-                    whitefile = common.get_file_by_timestamp(detcorrectionsdir, timestamp, '*whitefield.tif')
-                    self.white_file_button.setText(whitefile)
+        # if len(self.dark_file_button.text()) == 0 or len(self.white_file_button.text()) == 0:
+        #     # try to get the correction files from git repository
+        #     if len(self.spec_file_button.text()) > 0:
+        #         # This will get correction files (white, dark) from the cohere_beamlines repository on github
+        #         # To get the right files a timestamp must be known, so parse it from spec.
+        #         timestamp = common.get_specfile_timestamp(str(self.spec_file_button.text()))
+        #         detcorrectionsdir = os.path.join(Path(bl.__file__).parents[0], 'detector_corrections', str(self.detector.text()))
+        #         if len(self.dark_file_button.text()) == 0:
+        #             darkfile = common.get_file_by_timestamp(detcorrectionsdir, timestamp, '*darkfield.tif')
+        #             self.dark_file_button.setText(darkfile)
+        #         if len(self.white_file_button.text()) == 0:
+        #             whitefile = common.get_file_by_timestamp(detcorrectionsdir, timestamp, '*whitefield.tif')
+        #             self.white_file_button.setText(whitefile)
 
 
     def set_spec_file(self):
