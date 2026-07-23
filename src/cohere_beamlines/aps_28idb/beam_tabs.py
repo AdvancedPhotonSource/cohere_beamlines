@@ -251,8 +251,12 @@ class SubInstrTab():
             msg_window ('cannot parse spec, specfile not defined')
             return
 
+        diff_name = self.instr_tab.diffractometer.currentText()
+        if len(diff_name) == 0:
+            msg_window ('cannot parse spec, diffractometer not defined')
+            return
         try:
-            diff_obj = diff.Diffractometer()
+            diff_obj = diff.create_diffractometer(diff_name)
         except Exception as e:
             msg_window (str(e))
             return
@@ -340,9 +344,14 @@ class InstrTab(QWidget):
         self.detdist = QLineEdit()
         gen_layout.addRow("detdist (mm)", self.detdist)
         self.det_roi = QLineEdit()
-        gen_layout.addRow("detector area (det_roi)", self.det_roi)
+#        gen_layout.addRow("detector area (det_roi)", self.det_roi)
         self.beam_zero = QLineEdit()
         gen_layout.addRow("beam zero position [x, y]", self.beam_zero)
+        self.diffractometer = QComboBox()
+        self.diffractometer.addItem("")
+        self.diffractometer.addItem("tower")
+        self.diffractometer.addItem("huber")
+        gen_layout.addRow("diffractometer", self.diffractometer)
         tab_layout.addLayout(gen_layout)
         tab_layout.addWidget(self.extended.spec_widget)
         if not self.add_config:
@@ -434,6 +443,15 @@ class InstrTab(QWidget):
         if 'beam_zero' in conf_map:
             self.beam_zero.setText(str(conf_map['beam_zero']).replace(" ", ""))
             self.beam_zero.setStyleSheet('color: black')
+        if 'diffractometer' in conf_map:
+            if conf_map['diffractometer'] == 'tower':
+                self.diffractometer.setCurrentIndex(1)
+            elif conf_map['diffractometer'] == 'huber':
+                self.diffractometer.setCurrentIndex(2)
+            else:
+                self.diffractometer.setCurrentIndex(0)
+        else:
+            self.diffractometer.setCurrentIndex(0)
 
         if self.add_config:
             self.extended.load_tab(conf_map)
@@ -526,6 +544,7 @@ class InstrTab(QWidget):
         self.white_file_button.setText('')
         self.det_roi.setText('')
         self.beam_zero.setText('')
+        self.diffractometer.setCurrentIndex(0)
         self.Imult.setText('')
         if self.add_config:
             self.extended.clear_conf()
@@ -580,6 +599,10 @@ class InstrTab(QWidget):
             conf_map['det_roi'] = ast.literal_eval(str(self.det_roi.text()).replace(os.linesep,''))
         if len(self.beam_zero.text()) > 0:
             conf_map['beam_zero'] = ast.literal_eval(str(self.beam_zero.text()).replace(os.linesep,''))
+        if self.diffractometer.currentIndex() == 1:
+            conf_map['diffractometer'] = 'tower'
+        if self.diffractometer.currentIndex() == 2:
+            conf_map['diffractometer'] = 'huber'
 
         if self.add_config:
             conf_map.update(self.extended.get_instr_config())

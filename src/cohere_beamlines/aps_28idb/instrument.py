@@ -4,7 +4,7 @@
 # See LICENSE file.                                                       #
 # #########################################################################
 import h5py
-from cohere_beamlines.aps_28idb.diffractometers import Diffractometer
+import cohere_beamlines.aps_28idb.diffractometers as diff
 import cohere_beamlines.aps_28idb.detectors as det
 from cohere_beamlines.common.instr import Instrument
 from xrayutilities.io import spec
@@ -136,13 +136,16 @@ def create_instr(configs, **kwargs):
     (str, Object)
         error msg, Instrument object or None
     """
-    det_obj = None
-    diff_obj = Diffractometer()
     main_config_params = configs['config']
 
     det_name = configs['config_instr'].get('detector', None)
     if det_name is None:
         raise ValueError('detector name not configured and could not be parsed')
+
+    diff_name = configs['config_instr'].get('diffractometer', None)
+    if diff_name is None:
+        raise ValueError('diffractometer name not configured')
+    diff_obj = diff.create_diffractometer(diff_name)
 
     # set detector parameters to configured parameters in config_instr and processing
     # parameters from config_prep
