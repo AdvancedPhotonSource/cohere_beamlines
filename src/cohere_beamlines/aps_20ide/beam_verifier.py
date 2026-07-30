@@ -17,7 +17,6 @@ __all__ = ['verify']
 
 
 config_instr_error = {
-                       'Roi': ['roi parameter should be a list of int'],
                        'Datadir': ['data_dir parameter should be string'],
                        'Darkfield': ['darkfield_filename parameter should be string',
                                      'darkfield_filename parameter parsing error'],
@@ -26,15 +25,15 @@ config_instr_error = {
                        'Detector':['detector parameter should be string'],
                        'Energy':['energy should be float',
                                  'energy parameter parsing error'],
-                       'Delta':['delta should be float',
-                                'delta parameter parsing error'],
-                       'Gamma':['gamma should be float',
-                                'gamma parameter parsing error'],
-                       'Detdist':['detdist should be float',
-                                  'detdist parameter parsing error'],
-                       'Dth':['dth should be float',
-                              'dth parameter parsing error']
-                    }
+                       'SamRy':['samRy should be float',
+                                'samRy parameter parsing error'],
+                       'DetZ':['DetZ should be float',
+                                'DetZ parameter parsing error'],
+                       'DetX':['DetX should be float',
+                               'DetX parameter parsing error'],
+                       'DetY': ['DetY should be float',
+                                'DetY parameter parsing error']
+                }
 
 config_map_names = {'config_instr_error_map_file':config_instr_error}
 
@@ -106,162 +105,8 @@ def get_config_error_message(config_file_name, map_file, config_parameter, confi
     config_map_dic = config_map_names.get(map_file)
     print('config parameter:', config_parameter)
     error_string_message = config_map_dic.get(config_parameter)[config_error_no]
-    # presented_message = "File=" + config_file_name, "Parameter=" + config_parameter, "Error=" + error_string_message
 
     return (error_string_message)
-
-
-def ver_config_prep(config_map):
-    """
-    This function verifies experiment config_prep file
-
-    Parameters
-    ----------
-    fname : str
-        configuration file name
-
-    Returns
-    -------
-    error_message : str
-        message describing parameter error or empty string if all parameters are verified
-    """
-    config_map_file = 'config_prep_error_map_file'
-    fname = 'config_prep'
-
-    config_parameter = 'Excludescans'
-    if 'exclude_scans' in config_map:
-        if not ver_list_int('exclude_scans', config_map['exclude_scans']):
-            config_error = 0
-            error_message = get_config_error_message(fname, config_map_file, config_parameter, config_error)
-            print(error_message)
-            return (error_message)
-
-    config_parameter = 'MinFiles'
-    if 'min_frames' in config_map:
-        min_frames = config_map['min_frames']
-        if type(min_frames) != int:
-            config_error = 0
-            error_message = get_config_error_message(fname, config_map_file, config_parameter, config_error)
-            print(error_message)
-            return (error_message)
-
-    config_parameter = 'Excludescans'
-    if 'exclude_scans' in config_map:
-        if not ver_list_int('exclude_scans', config_map['exclude_scans']):
-            config_error = 0
-            error_message = get_config_error_message(fname, config_map_file, config_parameter, config_error)
-            print (error_message)
-            return (error_message)
-
-    return ("")
-
-
-def ver_config_disp(config_map):
-    """
-    This function verifies experiment config_disp file
-
-    Parameters
-    ----------
-    fname : str
-        configuration file name
-
-    Returns
-    -------
-    error_message : str
-        message describing parameter error or empty string if all parameters are verified
-    """
-    config_map_file = 'config_disp_error_map_file'
-    fname = 'config_disp'
-
-    config_parameter = 'Resultsdir'
-    if 'results_dir' in config_map:
-        results_dir = config_map['results_dir']
-        if type(results_dir) != str:
-            config_error = 0
-            error_message = get_config_error_message(fname, config_map_file, config_parameter, config_error)
-            print('results_dir parameter should be string')
-            return (error_message)
-
-    config_parameter = 'Detector'
-    if 'detector' in config_map:
-        detector = config_map['detector']
-        if type(detector) != str:
-            config_error = 0
-            error_message = get_config_error_message(fname, config_map_file, config_parameter, config_error)
-            print('detector parameter should be string')
-            return (error_message)
-
-    config_parameter = 'Crop'
-    if 'crop' in config_map:
-        crop = config_map['crop']
-        if not issubclass(type(crop), list):
-            config_error = 0
-            error_message = get_config_error_message(fname, config_map_file, config_parameter, config_error)
-            print('crop should be list')
-            return (error_message)
-        for e in crop:
-            if type(e) != int and type(e) != float:
-                config_error = 1
-                error_message = get_config_error_message(fname, config_map_file, config_parameter, config_error)
-                print('crop should be a list of int or float')
-                return (error_message)
-
-    config_parameter = 'Rampups'
-    if 'rampups' in config_map:
-        rampups = config_map['rampups']
-        if type(rampups) != int:
-            config_error = 0
-            error_message = get_config_error_message(fname, config_map_file, config_parameter, config_error)
-            print('rampups should be float')
-            return (error_message)
-
-    config_parameter = 'Energy'
-    if 'energy' in config_map:
-        energy = config_map['energy']
-        if type(energy) != float:
-            config_error = 0
-            error_message = get_config_error_message(fname, config_map_file, config_parameter, config_error)
-            print('energy should be float')
-            return (error_message)
-
-    config_parameter = 'Delta'
-    if 'delta' in config_map:
-        delta = config_map['delta']
-        if type(delta) != float:
-            config_error = 0
-            error_message = get_config_error_message(fname, config_map_file, config_parameter, config_error)
-            print('delta should be float')
-            return (error_message)
-
-    config_parameter = 'Gamma'
-    if 'gamma' in config_map:
-        gamma = config_map['gamma']
-        if type(gamma) != float:
-            config_error = 0
-            error_message = get_config_error_message(fname, config_map_file, config_parameter, config_error)
-            print('gamma should be float')
-            return (error_message)
-
-    config_parameter = 'Detdist'
-    if 'detdist' in config_map:
-        detdist = config_map['detdist']
-        if type(detdist) != float:
-            config_error = 0
-            error_message = get_config_error_message(fname, config_map_file, config_parameter, config_error)
-            print('detdist should be float')
-            return (error_message)
-
-    config_parameter = 'Dth'
-    if 'dth' in config_map:
-        dth = config_map['dth']
-        if type(dth) != float:
-            config_error = 0
-            error_message = get_config_error_message(fname, config_map_file, config_parameter, config_error)
-            print('dth should be float')
-            return (error_message)
-
-    return ("")
-
 
 def ver_config_instr(config_map):
     """
@@ -279,14 +124,6 @@ def ver_config_instr(config_map):
     """
     config_map_file = 'config_instr_error_map_file'
     fname = 'config_instr'
-
-    config_parameter = 'Roi'
-    if 'roi' in config_map:
-        if not ver_list_int('roi', config_map['roi']):
-            config_error = 0
-            error_message = get_config_error_message(fname, config_map_file, config_parameter, config_error)
-            print (error_message)
-            return (error_message)
 
     config_parameter = 'Datadir'
     if 'data_dir' in config_map:
@@ -321,31 +158,7 @@ def ver_config_instr(config_map):
         if type(detector) != str:
             config_error = 0
             error_message = get_config_error_message(fname, config_map_file, config_parameter, config_error)
-            print('detector parameter should be string')
-            return (error_message)
-
-    config_parameter = 'Crop'
-    if 'crop' in config_map:
-        crop = config_map['crop']
-        if not issubclass(type(crop), list):
-            config_error = 0
-            error_message = get_config_error_message(fname, config_map_file, config_parameter, config_error)
-            print('crop should be list')
-            return (error_message)
-        for e in crop:
-            if type(e) != int and type(e) != float:
-                config_error = 1
-                error_message = get_config_error_message(fname, config_map_file, config_parameter, config_error)
-                print('crop should be a list of int or float')
-                return (error_message)
-
-    config_parameter = 'Rampups'
-    if 'rampups' in config_map:
-        rampups = config_map['rampups']
-        if type(rampups) != int:
-            config_error = 0
-            error_message = get_config_error_message(fname, config_map_file, config_parameter, config_error)
-            print('rampups should be float')
+            print(error_message)
             return (error_message)
 
     config_parameter = 'Energy'
@@ -357,43 +170,44 @@ def ver_config_instr(config_map):
             print('energy should be float')
             return (error_message)
 
-    config_parameter = 'Delta'
-    if 'delta' in config_map:
-        delta = config_map['delta']
-        if type(delta) != float:
+    config_parameter = 'DetX'
+    if 'DetX' in config_map:
+        DetX = config_map['DetX']
+        if type(DetX) != float:
             config_error = 0
             error_message = get_config_error_message(fname, config_map_file, config_parameter, config_error)
-            print('delta should be float')
+            print('DetX should be float')
             return (error_message)
 
-    config_parameter = 'Gamma'
-    if 'gamma' in config_map:
-        gamma = config_map['gamma']
-        if type(gamma) != float:
+    config_parameter = 'DetY'
+    if 'DetY' in config_map:
+        DetY = config_map['DetY']
+        if type(DetY) != float:
             config_error = 0
             error_message = get_config_error_message(fname, config_map_file, config_parameter, config_error)
-            print('gamma should be float')
+            print('DetY should be float')
             return (error_message)
 
-    config_parameter = 'Detdist'
-    if 'detdist' in config_map:
-        detdist = config_map['detdist']
-        if type(detdist) != float:
+    config_parameter = 'DetZ'
+    if 'DetZ' in config_map:
+        DetZ = config_map['DetZ']
+        if type(DetZ) != float:
             config_error = 0
             error_message = get_config_error_message(fname, config_map_file, config_parameter, config_error)
-            print('detdist should be float')
+            print('DetZ should be float')
             return (error_message)
 
-    config_parameter = 'Dth'
-    if 'dth' in config_map:
-        dth = config_map['dth']
-        if type(dth) != float:
+    config_parameter = 'SamRy'
+    if 'samRy' in config_map:
+        samRy = config_map['samRy']
+        if type(samRy) != float:
             config_error = 0
             error_message = get_config_error_message(fname, config_map_file, config_parameter, config_error)
-            print('dth should be float')
+            print('samRy should be float')
             return (error_message)
 
     return ("")
+
 
 def verify(file_name, conf_map):
     """
@@ -412,13 +226,7 @@ def verify(file_name, conf_map):
     str
         a message with description of error or empty string if no error
     """
-    if file_name == 'config_prep':
-        return ver_config_prep(conf_map)
-    elif file_name == 'config_disp':
-        return ver_config_disp(conf_map)
-    elif file_name == 'config_instr':
+    if file_name == 'config_instr':
         return ver_config_instr(conf_map)
-    elif file_name == 'config_mp':
-        return ''
     else:
         return ('verifier has no function to check config file named', file_name)

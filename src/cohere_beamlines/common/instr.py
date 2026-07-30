@@ -75,13 +75,13 @@ class Instrument(ABC):
                 raise KeyError(f'{ax} not parsed from metadata and not configured')
 
 
-    def get_q2(self, scan, slices, roi):
+    def get_q2(self, scan, slices, roi, geo=False):
         """
         Returns q2 associated with the area on detector pointed by roi for requested slices.
 
         :param scan: int, scan number
         :param conf_params: conf_params dict
-        :param slices: list containing slices numbers that the q2 vector will be calculated for
+        :param slices: a slice number that of q2
                         or 'all' for all slices
         :param roi: list defining roi (start, end, start, end)
         :param det: detector object
@@ -109,22 +109,22 @@ class Instrument(ABC):
             scanen = np.array((energy,))
 
         if slices is None:
-            if issubclass(type(params[scanmot]), list):  # calculate geometry using configuration
-                # configure if metadata can't be parsed or wishing to override
-                # has to be a list of two consecutive scan motor positions
-                scanmot_arr = np.array(params[scanmot])
+            if 'scanmot' in params and 'scan_step' in params:
+                scanmot_arr = np.array([params[scanmot], params[scanmot] + params['scan_step']])
             else:
-                raise ValueError('prprocess.xlxs file not found, scanmot should be configured as list of two float values, corresponding to motor positions')
+                raise ValueError('missing scanmot or scan_step parameter')
         else:
             # define scan_mot array for the slices
             scanmot_posns = params['scanmot_posns']
             if slices == 'all': # calculating RSM
                 scanmot_arr = np.array(scanmot_posns)
-            elif len(slices) == 1:  # calculating PixelQ
-                slice = slices[0]
-                scanmot_arr = np.array(scanmot_posns[slice])
+            elif not geo:  # calculating PixelQ
+                scanmot_arr = np.array(scanmot_posns[slices])
             else:  # calculate geometry using metadata
-                scanmot_arr = np.array([scanmot_posns[slice] for slice in slices])
+                if 'scan_step' in params:
+                    scanmot_arr = np.array([scanmot_posns[slices], scanmot_posns[slices] + params['scan_step']])
+                else:
+                    scanmot_arr = np.array([scanmot_posns[slices], scanmot_posns[slices+1]])
 
         det = self.det_obj
         diff = self.diff_obj
@@ -166,7 +166,7 @@ class Instrument(ABC):
         realpix = self.det_obj.get_realpixelpos(pixel)
         # xrayuntilties needs (start, end, start, end) so convert to that.
         roi = [realpix[0], realpix[0] + 1, realpix[1], realpix[1] + 1]
-        slices = [pixel[2]]  # q2 vector for slice with max intensity
+        slices = pixel[2]  # q2 vector for slice with max intensity
         q2, qc, params = self.get_q2(scan, slices, roi)
 
         # get the scan motor position corresponding to pixelQ
@@ -215,14 +215,14 @@ class Instrument(ABC):
         if max_ind is not None:
             roi = [max_ind[0] - 1, max_ind[0] + 1,
                    max_ind[1] - 1, max_ind[1] + 1]
-            slices = [max_ind[2], max_ind[2] + 1]
+            slices = max_ind[2]
         else:
             # The roi should be position of max intensity in raw data array. Choose arbitrary the beamzero.
             roi = [self.det_obj.get_beamzero()[0] - 1, self.det_obj.get_beamzero()[0] + 1,
                    self.det_obj.get_beamzero()[1] - 1, self.det_obj.get_beamzero()[1] + 1]
             slices = None
 
-        q2, qc, params = self.get_q2(scan, slices, roi)
+        q2, qc, params = self.get_q2(scan, slices, roi, True)
 
         Astar = (q2[:, 0, 1, 0] - q2[:, 0, 0, 0]) * binning[0]
         Bstar = (q2[:, 0, 0, 1] - q2[:, 0, 0, 0]) * binning[1]
@@ -239,11 +239,11 @@ class Instrument(ABC):
 
         if 'scanmot_posns' in params and slices is not None:
             # get the scan motor position corresponding to max intensity
-            params[params['scanmot']] = params['scanmot_posns'][slices[0]]
-        else:
-            # the scanmot position is configured as a list
-            params[params['scanmot']] = params[params['scanmot']][0]
-            # transform to lab coords from sample reference frame
+            params[params['scanmot']] = params['scanmot_posns'][slices]
+        # else:
+            # the scanmot position is configured
+
+        # transform to lab coords from sample reference frame
         Astar = qc.transformSample2Lab(Astar, *[params[x] for x in diff.sampleaxes_mne]) * 10.0  # convert to inverse nm.
         Bstar = qc.transformSample2Lab(Bstar, *[params[x] for x in diff.sampleaxes_mne]) * 10.0
         Cstar = qc.transformSample2Lab(Cstar, *[params[x] for x in diff.sampleaxes_mne]) * 10.0

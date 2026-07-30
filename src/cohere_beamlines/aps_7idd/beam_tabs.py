@@ -134,9 +134,9 @@ class SubInstrTab():
         self.scanmot = QLineEdit()
         self.scanmot.setModified(False)
         spec_layout.addRow("scan motor", self.scanmot)
-        self.detector = QLineEdit()
-        self.detector.setModified(False)
-        spec_layout.addRow("detector", self.detector)
+        self.scan_step = QLineEdit()
+        self.scan_step.setModified(False)
+        spec_layout.addRow("scan step size", self.scan_step)
 
         self.energy.textChanged.connect(lambda: set_overriden(self.energy))
         self.yaw.textChanged.connect(lambda: set_overriden(self.yaw))
@@ -147,7 +147,7 @@ class SubInstrTab():
         self.chi.textChanged.connect(lambda: set_overriden(self.chi))
         self.phi.textChanged.connect(lambda: set_overriden(self.phi))
         self.scanmot.textChanged.connect(lambda: set_overriden(self.scanmot))
-        self.detector.textChanged.connect(lambda: set_overriden(self.detector))
+        self.scan_step.textChanged.connect(lambda: set_overriden(self.scan_step))
 
 
     def load_tab(self, conf_map):
@@ -187,8 +187,10 @@ class SubInstrTab():
             override_item(self.phi, str(conf_map['phi']).replace(" ", ""))
         if 'scanmot' in conf_map:
             override_item(self.scanmot, str(conf_map['scanmot']).replace(" ", ""))
+        if 'scan_step' in conf_map:
+            override_item(self.scan_step, str(conf_map['scan_step']).replace(" ", ""))
         if 'detector' in conf_map:
-            override_item(self.detector, str(conf_map['detector']).replace(" ", ""))
+            override_item(self.instr_tab.detector, str(conf_map['detector']).replace(" ", ""))
 
 
     def clear_conf(self):
@@ -201,7 +203,7 @@ class SubInstrTab():
         self.chi.setText('')
         self.phi.setText('')
         self.scanmot.setText('')
-        self.detector.setText('')
+        self.scan_step.setText('')
 
 
     def get_instr_config(self):
@@ -234,8 +236,8 @@ class SubInstrTab():
             conf_map['phi'] = ast.literal_eval(str(self.phi.text()))
         if self.scanmot.isModified() and len(self.scanmot.text()) > 0:
             conf_map['scanmot'] = str(self.scanmot.text())
-        if self.detector.isModified() and len(self.detector.text()) > 0:
-            conf_map['detector'] = str(self.detector.text())
+        if self.scan_step.isModified() and len(self.scan_step.text()) > 0:
+            conf_map['scan_step'] = ast.literal_eval(str(self.scan_step.text()))
 
         return conf_map
 
@@ -292,8 +294,10 @@ class SubInstrTab():
             set_item_parsed(self.radius, str(spec_dict['radius']))
         if 'scanmot' in spec_dict:
             set_item_parsed(self.scanmot, str(spec_dict['scanmot']))
+        if 'scan_step' in spec_dict:
+            set_item_parsed(self.scan_step, str(spec_dict['scan_step']))
         if 'detector' in spec_dict:
-            set_item_parsed(self.detector, str(spec_dict['detector']))
+            set_item_parsed(self.instr_tab.detector, str(spec_dict['detector']))
 
 
 class InstrTab(QWidget):
@@ -353,6 +357,8 @@ class InstrTab(QWidget):
         gen_layout.addRow("beam zero position [x, y]", self.beam_zero)
         self.Imult = QLineEdit()
         gen_layout.addRow("Imult", self.Imult)
+        self.detector = QLineEdit()
+        gen_layout.addRow("detector", self.detector)
         tab_layout.addLayout(gen_layout)
         tab_layout.addWidget(self.extended.spec_widget)
         if not self.add_config:
@@ -372,6 +378,7 @@ class InstrTab(QWidget):
         self.data_dir_button.clicked.connect(self.set_data_dir)
         self.dark_file_button.clicked.connect(self.set_dark_file)
         self.white_file_button.clicked.connect(self.set_white_file)
+        self.detector.textChanged.connect(lambda: set_overriden(self.detector))
         self.save_instr_conf.clicked.connect(self.save_conf)
         self.set_instr_conf_from_button.clicked.connect(self.load_instr_conf)
 
@@ -426,6 +433,10 @@ class InstrTab(QWidget):
             self.white_file_button.setText('')
         if 'Imult' in conf_map:
             self.Imult.setText(str(conf_map['Imult']).replace(" ", ""))
+        if 'detector' in conf_map:
+            self.detector.setText(str(conf_map['detector']).replace(" ", ""))
+            self.detector.setStyleSheet('color: black')
+            self.detector.setModified(True)
 
         if 'beam_zero' in conf_map:
             self.beam_zero.setText(str(conf_map['beam_zero']).replace(" ", ""))

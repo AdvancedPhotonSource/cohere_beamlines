@@ -137,6 +137,7 @@ class Detector_s28eiger2_si(aps28Detector):
     """
     name = "s28eiger2-si"
     dims = (1028, 512)
+    det_roi = [0, 1028, 0, 512]
     pixel = (75.0e-6, 75e-6)
     pixelorientation = ('x-', 'z-')  # in xrayutilities notation
     darkfield = None

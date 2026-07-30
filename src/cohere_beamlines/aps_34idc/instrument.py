@@ -98,6 +98,7 @@ class Instrument_aps_34idc(Instrument):
         try:
             command = ss.command.split()
             spec_dict['scanmot'] = command[1]
+            spec_dict['scan_step'] = (float(command[3]) - float(command[2])) / int(command[4])
         except:
             pass
 

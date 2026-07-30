@@ -118,11 +118,15 @@ class SubInstrTab():
         self.scanmot = QLineEdit()
         self.scanmot.setModified(False)
         spec_layout.addRow("scan motor", self.scanmot)
+        self.scan_step = QLineEdit()
+        self.scan_step.setModified(False)
+        spec_layout.addRow("scan step size", self.scan_step)
 
         self.aero.textChanged.connect(lambda: set_overriden(self.aero))
         self.vff_eta.textChanged.connect(lambda: set_overriden(self.vff_eta))
         self.vff_r.textChanged.connect(lambda: set_overriden(self.vff_r))
         self.scanmot.textChanged.connect(lambda: set_overriden(self.scanmot))
+        self.scan_step.textChanged.connect(lambda: set_overriden(self.scan_step))
 
 
     def load_tab(self, conf_map):
@@ -152,6 +156,8 @@ class SubInstrTab():
             override_item(self.vff_r, str(conf_map['vff_r']).replace(" ", ""))
         if 'scanmot' in conf_map:
             override_item(self.scanmot, str(conf_map['scanmot']).replace(" ", ""))
+        if 'scan_step' in conf_map:
+            override_item(self.scan_step, str(conf_map['scan_step']).replace(" ", ""))
 
 
     def clear_conf(self):
@@ -159,6 +165,7 @@ class SubInstrTab():
         self.vff_eta.setText('')
         self.vff_r.setText('')
         self.scanmot.setText('')
+        self.scan_step.setText('')
 
 
     def get_instr_config(self):
@@ -181,6 +188,8 @@ class SubInstrTab():
             conf_map['vff_r'] = ast.literal_eval(str(self.vff_r.text()))
         if self.scanmot.isModified() and len(self.scanmot.text()) > 0:
             conf_map['scanmot'] = str(self.scanmot.text())
+        if self.scan_step.isModified() and len(self.scan_step.text()) > 0:
+            conf_map['scan_step'] = ast.literal_eval(str(self.scan_step.text()))
 
         return conf_map
 
@@ -237,6 +246,8 @@ class SubInstrTab():
             set_item_parsed(self.vff_r, str(spec_dict['vff_r']))
         if 'scanmot' in spec_dict:
             set_item_parsed(self.scanmot, str(spec_dict['scanmot']))
+        if 'scan_step' in spec_dict:
+            set_item_parsed(self.scan_step, str(spec_dict['scan_step']))
 
 
 class InstrTab(QWidget):

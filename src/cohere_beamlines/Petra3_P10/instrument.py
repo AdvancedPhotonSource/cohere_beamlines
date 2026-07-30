@@ -67,6 +67,7 @@ class Instrument_Petra3_P10(Instrument):
         scanmot = scanmeta.get_scan_motor()
         fio_dict['scanmot'] = scanmot
         fio_dict['scanmot_posns'] = scanmeta.get_scan_data(scanmot)
+        fio_dict['scan_step'] = (fio_dict['scanmot_posns'][-1] - fio_dict['scanmot_posns'][0]) / len(fio_dict['scanmot_posns'])
 
         for mot_mne, mot_name in zip(self.diff_obj.sampleaxes_mne + self.diff_obj.detectoraxes_mne,
                                      self.diff_obj.sampleaxes_name + self.diff_obj.detectoraxes_name):

@@ -114,43 +114,6 @@ def get_config_error_message(config_file_name, map_file, config_parameter, confi
     return (error_string_message)
 
 
-def ver_config_prep(config_map):
-    """
-    This function verifies experiment config_prep file
-
-    Parameters
-    ----------
-    fname : str
-        configuration file name
-
-    Returns
-    -------
-    error_message : str
-        message describing parameter error or empty string if all parameters are verified
-    """
-    config_map_file = 'config_prep_error_map_file'
-    fname = 'config_prep'
-
-    config_parameter = 'Excludescans'
-    if 'exclude_scans' in config_map:
-        if not ver_list_int('exclude_scans', config_map['exclude_scans']):
-            config_error = 0
-            error_message = get_config_error_message(fname, config_map_file, config_parameter, config_error)
-            print(error_message)
-            return (error_message)
-
-    config_parameter = 'MinFiles'
-    if 'min_frames' in config_map:
-        min_frames = config_map['min_frames']
-        if type(min_frames) != int:
-            config_error = 0
-            error_message = get_config_error_message(fname, config_map_file, config_parameter, config_error)
-            print(error_message)
-            return (error_message)
-
-    return ("")
-
-
 def ver_config_instr(config_map):
     """
     This function verifies experiment config_disp file

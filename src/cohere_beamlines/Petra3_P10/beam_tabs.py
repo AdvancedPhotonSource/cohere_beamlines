@@ -134,6 +134,9 @@ class SubInstrTab():
         self.scanmot = QLineEdit()
         self.scanmot.setModified(False)
         fio_layout.addRow("scan motor", self.scanmot)
+        self.scan_step = QLineEdit()
+        self.scan_step.setModified(False)
+        fio_layout.addRow("scan step size", self.scan_step)
         self.detector = QLineEdit()
         self.detector.setModified(False)
         fio_layout.addRow("detector", self.detector)
@@ -147,6 +150,7 @@ class SubInstrTab():
         self.chi.textChanged.connect(lambda: set_overriden(self.chi))
         self.phi.textChanged.connect(lambda: set_overriden(self.phi))
         self.scanmot.textChanged.connect(lambda: set_overriden(self.scanmot))
+        self.scan_step.textChanged.connect(lambda: set_overriden(self.scan_step))
         self.detector.textChanged.connect(lambda: set_overriden(self.detector))
 
 
@@ -187,6 +191,8 @@ class SubInstrTab():
             override_item(self.phi, str(conf_map['phi']).replace(" ", ""))
         if 'scanmot' in conf_map:
             override_item(self.scanmot, str(conf_map['scanmot']).replace(" ", ""))
+        if 'scan_step' in conf_map:
+            override_item(self.scan_step, str(conf_map['scan_step']).replace(" ", ""))
         if 'detector' in conf_map:
             override_item(self.detector, str(conf_map['detector']).replace(" ", ""))
 
@@ -201,6 +207,7 @@ class SubInstrTab():
         self.chi.setText('')
         self.phi.setText('')
         self.scanmot.setText('')
+        self.scan_step.setText('')
         self.detector.setText('')
 
 
@@ -234,6 +241,8 @@ class SubInstrTab():
             conf_map['phi'] = ast.literal_eval(str(self.phi.text()))
         if self.scanmot.isModified() and len(self.scanmot.text()) > 0:
             conf_map['scanmot'] = str(self.scanmot.text())
+        if self.scan_step.isModified() and len(self.scan_step.text()) > 0:
+            conf_map['scan_step'] = ast.literal_eval(str(self.scan_step.text()))
         if self.detector.isModified() and len(self.detector.text()) > 0:
             conf_map['detector'] = str(self.detector.text())
 
@@ -302,6 +311,8 @@ class SubInstrTab():
             set_item_parsed(self.detdist, str(fio_dict['detdist']))
         if 'scanmot' in fio_dict:
             set_item_parsed(self.scanmot, str(fio_dict['scanmot']))
+        if 'scan_step' in fio_dict:
+            set_item_parsed(self.scan_step, str(fio_dict['scan_step']))
         if 'detector' in fio_dict:
             set_item_parsed(self.detector, str(fio_dict['detector']))
 

@@ -89,6 +89,7 @@ class Instrument_aps_20ide(Instrument):
             h5_dict['scanmot_posns'] = h5f[f'SMS/E/HR/{scanmot}'][:]
         except:
             pass
+        h5_dict['scan_step'] = (h5_dict['scanmot_posns'][-1] - h5_dict['scanmot_posns'][0]) / len(h5_dict['scanmot_posns'] -1)
         for mot_mne in self.diff_obj.detectoraxes_mne:
             try:
                 h5_dict[mot_mne] = h5f[f'DMS/{mot_mne}'][0]

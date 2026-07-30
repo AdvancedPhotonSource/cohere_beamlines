@@ -105,25 +105,37 @@ class SubInstrTab():
         self.instr_tab = instr_tab
 
         self.meta_widget = QWidget()
-        spec_layout = QFormLayout()
-        self.meta_widget.setLayout(spec_layout)
+        meta_layout = QFormLayout()
+        self.meta_widget.setLayout(meta_layout)
         self.energy = QLineEdit()
         self.energy.setModified(False)
-        spec_layout.addRow("energy", self.energy)
+        meta_layout.addRow("energy", self.energy)
         self.DetX = QLineEdit()
         self.DetX.setModified(False)
-        spec_layout.addRow("DetX (mm)", self.DetX)
+        meta_layout.addRow("DetX (mm)", self.DetX)
         self.DetY = QLineEdit()
         self.DetY.setModified(False)
-        spec_layout.addRow("DetY (mm)", self.DetY)
+        meta_layout.addRow("DetY (mm)", self.DetY)
         self.DetZ = QLineEdit()
         self.DetZ.setModified(False)
-        spec_layout.addRow("DetZ (mm)", self.DetZ)
+        meta_layout.addRow("DetZ (mm), detector distance", self.DetZ)
+        self.samRy= QLineEdit()
+        self.samRy.setModified(False)
+        meta_layout.addRow("samRy", self.samRy)
+        self.scanmot = QLineEdit()
+        self.scanmot.setModified(False)
+        meta_layout.addRow("scan motor", self.scanmot)
+        self.scan_step = QLineEdit()
+        self.scan_step.setModified(False)
+        meta_layout.addRow("scan step size", self.scan_step)
 
         self.energy.textChanged.connect(lambda: set_overriden(self.energy))
         self.DetZ.textChanged.connect(lambda: set_overriden(self.DetZ))
         self.DetX.textChanged.connect(lambda: set_overriden(self.DetX))
         self.DetY.textChanged.connect(lambda: set_overriden(self.DetY))
+        self.samRy.textChanged.connect(lambda: set_overriden(self.samRy))
+        self.scanmot.textChanged.connect(lambda: set_overriden(self.scanmot))
+        self.scan_step.textChanged.connect(lambda: set_overriden(self.scan_step))
 
 
     def load_tab(self, conf_map):
@@ -144,7 +156,7 @@ class SubInstrTab():
 
         self.parse_metadata()
 
-        # if parameters are configured, override the readings from spec file
+        # if parameters are configured, override the readings from h5 file
         if 'energy' in conf_map:
             override_item(self.energy, str(conf_map['energy']).replace(" ", ""))
         if 'DetX' in conf_map:
@@ -153,6 +165,12 @@ class SubInstrTab():
             override_item(self.DetY, str(conf_map['DetY']).replace(" ", ""))
         if 'DetZ' in conf_map:
             override_item(self.DetZ, str(conf_map['DetZ']).replace(" ", ""))
+        if 'samRy' in conf_map:
+            override_item(self.samRy, str(conf_map['samRy']).replace(" ", ""))
+        if 'scanmot' in conf_map:
+            override_item(self.scanmot, str(conf_map['scanmot']).replace(" ", ""))
+        if 'scan_step' in conf_map:
+            override_item(self.scan_step, str(conf_map['scan_step']).replace(" ", ""))
 
 
     def clear_conf(self):
@@ -160,6 +178,9 @@ class SubInstrTab():
         self.DetX.setText('')
         self.DetY.setText('')
         self.DetZ.setText('')
+        self.samRy.setText('')
+        self.scanmot.setText('')
+        self.scan_step.setText('')
 
 
     def get_instr_config(self):
@@ -182,13 +203,19 @@ class SubInstrTab():
             conf_map['DetY'] = ast.literal_eval(str(self.DetY.text()))
         if self.DetZ.isModified() and len(self.DetZ.text()) > 0:
             conf_map['DetZ'] = ast.literal_eval(str(self.DetZ.text()))
+        if self.samRy.isModified() and len(self.samRy.text()) > 0:
+            conf_map['samRy'] = ast.literal_eval(str(self.samRy.text()))
+        if self.scanmot.isModified() and len(self.scanmot.text()) > 0:
+            conf_map['scanmot'] = str(self.scanmot.text())
+        if self.scan_step.isModified() and len(self.scan_step.text()) > 0:
+            conf_map['scan_step'] = ast.literal_eval(str(self.scan_step.text()))
 
         return conf_map
 
 
     def parse_metadata(self):
         """
-        Calls utility function to parse spec file. Displas the parsed parameters in the window with blue text.
+        Calls utility function to parse h5 file. Displas the parsed parameters in the window with blue text.
         Parameters
         ----------
         none
@@ -228,6 +255,12 @@ class SubInstrTab():
             set_item_parsed(self.DetY, str(meta_dict['DetY']))
         if 'DetZ' in meta_dict:
             set_item_parsed(self.DetZ, str(meta_dict['DetZ']))
+        if 'samRy' in meta_dict:
+            set_item_parsed(self.samRy, str(meta_dict['samRy']))
+        if 'scanmot' in meta_dict:
+            set_item_parsed(self.scanmot, str(meta_dict['scanmot']))
+        if 'scan_step' in meta_dict:
+            set_item_parsed(self.scan_step, str(meta_dict['scan_step']))
 
 
 class InstrTab(QWidget):
