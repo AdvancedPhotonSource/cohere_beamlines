@@ -40,6 +40,9 @@ INSTR_FIELDS = {
             'description': 'If on, use the median across columns '
                            '(robust to bright objects). Off = use the mean.',
         },
+        {'key': 'scan_step', 'label': 'scan_step', 'unit': 'deg',
+         'type': 'float',
+         'description': 'scan step size, typically calculated from metadata.'},
     ],
     'spec': [
         {'key': 'energy', 'label': 'energy', 'unit': 'keV', 'type': 'float',
@@ -60,3 +63,6 @@ INSTR_FIELDS = {
 }
 
 SPEC_DRIVERS = ('data_dir',)
+
+def get_config_schema():
+    return INSTR_FIELDS

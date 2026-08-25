@@ -38,6 +38,9 @@ INSTR_FIELDS = {
         {'key': 'vff_r_offset', 'label': 'vff_r offset', 'unit': 'm',
          'type': 'float',
          'description': 'Offset added to vff_r (after mm→m conversion).'},
+        {'key': 'scan_step', 'label': 'scan_step', 'unit': 'deg',
+         'type': 'float',
+         'description': 'scan step size, typically calculated from metadata.'},
     ],
     'spec': [
         {'key': 'aero', 'label': 'aero', 'unit': 'deg', 'type': 'float',
@@ -52,3 +55,6 @@ INSTR_FIELDS = {
 }
 
 SPEC_DRIVERS = ('specfile',)
+
+def get_config_schema():
+    return INSTR_FIELDS

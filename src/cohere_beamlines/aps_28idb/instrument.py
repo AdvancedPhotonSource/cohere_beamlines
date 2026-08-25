@@ -141,7 +141,7 @@ def create_instr(configs, **kwargs):
 
     det_name = configs['config_instr'].get('detector', None)
     if det_name is None:
-        raise ValueError('detector name not configured and could not be parsed')
+        raise ValueError('detector name not configured and not parsed')
 
     diff_name = configs['config_instr'].get('diffractometer', None)
     if diff_name is None:

@@ -9,7 +9,8 @@ from PyQt6.QtCore import *
 from PyQt6.QtWidgets import *
 import ast
 import cohere_core.utilities as ut
-import cohere_beamlines.aps_7idd.beam_verifier as ver
+import cohere_core.utilities.config_verifier as ver
+import cohere_beamlines.aps_7idd.instr_schema as instr_schema
 from cohere_beamlines.aps_7idd.diffractometers import Diffractometer
 from cohere_beamlines.aps_7idd.instrument import Instrument_aps_7idd
 
@@ -603,7 +604,7 @@ class InstrTab(QWidget):
         if len(conf_map) == 0:
             return
 
-        er_msg = ver.verify('config_instr', conf_map)
+        er_msg = ver.verify_types(instr_schema.get_config_schema(), conf_map)
         if len(er_msg) > 0:
             msg_window(er_msg)
             if not self.main_win.no_verify:

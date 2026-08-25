@@ -11,6 +11,9 @@ INSTR_FIELDS = {
             'key': 'h5file', 'label': 'h5 file', 'type': 'file',
             'description': 'HDF5 file containing the scan data and metadata.',
         },
+        {'key': 'scan_step', 'label': 'scan_step', 'unit': 'deg',
+         'type': 'float',
+         'description': 'scan step size, typically calculated from metadata.'},
     ],
     'spec': [
         {'key': 'energy', 'label': 'energy', 'unit': 'keV', 'type': 'float',
@@ -31,3 +34,6 @@ INSTR_FIELDS = {
 }
 
 SPEC_DRIVERS = ('h5file',)
+
+def get_config_schema():
+    return INSTR_FIELDS

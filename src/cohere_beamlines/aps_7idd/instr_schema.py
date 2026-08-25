@@ -22,6 +22,9 @@ INSTR_FIELDS = {
             'key': 'Imult', 'label': 'Imult', 'type': 'float',
             'description': 'Intensity multiplier applied to every frame.',
         },
+        {'key': 'scan_step', 'label': 'scan_step', 'unit': 'deg',
+         'type': 'float',
+         'description': 'scan step size, typically calculated from metadata.'},
     ],
     'spec': [
         {'key': 'energy', 'label': 'energy', 'unit': 'keV', 'type': 'float',
@@ -52,3 +55,6 @@ INSTR_FIELDS = {
 }
 
 SPEC_DRIVERS = ('specfile',)
+
+def get_config_schema():
+    return INSTR_FIELDS

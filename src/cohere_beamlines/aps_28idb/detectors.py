@@ -200,51 +200,17 @@ class Detector_s28eiger2_si(aps28Detector):
     @staticmethod
     def check_mandatory_params(params):
         """
-        For the 34idcTIM1 detector the data directory is mandatory. The darkfield file is optional.
+        For the s28eiger2-si detector the data directory is mandatory.
 
         :return: message indicating problem or empty message if all is ok
         """
         if 'data_dir' not in params:
-            msg = 'data_dir parameter not configured, mandatory for 34idcTIM1 detector.'
+            msg = 'data_dir parameter not configured, mandatory for s28eiger2-si detector.'
             raise ValueError(msg)
         data_dir = params['data_dir']
         if not os.path.isdir(data_dir):
             msg = f'data_dir directory{data_dir} does not exist.'
             raise ValueError(msg)
-
-
-    @staticmethod
-    def check_mandatory_params(params):
-        """
-        For the 34idcTIM2 detector the data directory, whitefiled_filename, darkfield_ilename
-        are mandatory parameters.
-
-        :params: parameters needed to create detector
-        :return: message indicating problem or empty message if all is ok
-        """
-        if 'data_dir' not in params:
-            msg = 'data_dir parameter not configured, mandatory for 34idcTIM2 detector.'
-            raise ValueError(msg)
-        data_dir = params['data_dir']
-        if not os.path.isdir(data_dir):
-            msg = f'data_dir directory{data_dir} does not exist.'
-            raise ValueError(msg)
-
-        # if 'whitefield_filename' not in params:
-        #     msg = 'whitefield_filename parameter not configured, mandatory for 34idcTIM2 detector.'
-        #     raise ValueError(msg)
-        # whitefield = params['whitefield_filename']
-        # if not os.path.isfile(whitefield):
-        #     msg = f'whitefield_filename file {whitefield} does not exist.'
-        #     raise ValueError(msg)
-        #
-        # if 'darkfield_filename' not in params:
-        #     msg = 'darkfield_filename parameter not configured, mandatory for 34idcTIM2 detector.'
-        #     raise ValueError(msg)
-        # darkfield = params['darkfield_filename']
-        # if not os.path.isfile(darkfield):
-        #     msg = f'darkfield_filename file {darkfield} does not exist.'
-        #     raise ValueError(msg)
 
 
 dets = {detector.name: detector for detector in aps28Detector.__subclasses__()}

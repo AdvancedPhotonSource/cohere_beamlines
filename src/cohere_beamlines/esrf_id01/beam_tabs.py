@@ -9,7 +9,8 @@ from PyQt6.QtCore import *
 from PyQt6.QtWidgets import *
 import ast
 import cohere_core.utilities as ut
-import cohere_beamlines.esrf_id01.beam_verifier as ver
+import cohere_core.utilities.config_verifier as ver
+import cohere_beamlines.esrf_id01.instr_schema as instr_schema
 
 
 def msg_window(text):
@@ -253,8 +254,7 @@ class InstrTab(QWidget):
         if len(conf_map) == 0:
             return
 
-        # verify here
-        er_msg = ver.verify('config_instr', conf_map)
+        er_msg = ver.verify_types(instr_schema.get_config_schema(), conf_map)
         if len(er_msg) > 0:
             msg_window(er_msg)
             if not self.main_win.no_verify:

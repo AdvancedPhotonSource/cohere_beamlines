@@ -19,7 +19,10 @@ INSTR_FIELDS = {
             'type': 'choice', 'choices': ['e4m', 'e2500'],
             'description': 'Detector module identifier.',
         },
-    ],
+        {'key': 'scan_step', 'label': 'scan_step', 'unit': 'deg',
+         'type': 'float',
+         'description': 'scan step size, typically calculated from metadata.'},
+        ],
     'spec': [
         {'key': 'energy', 'label': 'energy', 'unit': 'keV', 'type': 'float',
          'description': 'Incident beam energy. Values below 1000 are treated as keV, otherwise eV.'},
@@ -45,3 +48,6 @@ INSTR_FIELDS = {
 }
 
 SPEC_DRIVERS = ('data_dir', 'sample')
+
+def get_config_schema():
+    return INSTR_FIELDS

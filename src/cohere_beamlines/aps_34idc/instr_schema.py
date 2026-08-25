@@ -74,6 +74,9 @@ INSTR_FIELDS = {
             'placeholder': 'e.g., [0, 256, 0, 256]',
             'description': 'Detector ROI [y0, height, x0, width].',
         },
+        {'key': 'scan_step', 'label': 'scan_step', 'unit': 'deg',
+         'type': 'float',
+         'description': 'scan step size, typically calculated from metadata.'},
     ],
     'spec': [
         {'key': 'energy', 'label': 'energy', 'unit': 'keV', 'type': 'float',
@@ -100,3 +103,6 @@ INSTR_FIELDS = {
 }
 
 SPEC_DRIVERS = ('specfile',)
+
+def get_config_schema():
+    return INSTR_FIELDS
