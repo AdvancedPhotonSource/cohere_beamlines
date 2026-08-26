@@ -24,6 +24,9 @@ dependencies = [
                 'numpy>=2.0'
                 ]
 
+[project.scripts]
+aps_34idc_setup = "cohere_beamlines.aps_34idc.experiment_setup:main"
+
 [tool.setuptools.packages.find]
     where = ["src"]
 
