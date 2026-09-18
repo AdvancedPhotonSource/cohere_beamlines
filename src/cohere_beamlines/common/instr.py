@@ -94,6 +94,8 @@ class Instrument(ABC):
         self.check_params(params, slices)
         params = self.convert_units(params)
         energy = params['energy']
+        if energy <= 0:
+            raise ValueError('energy must be positive')
         enfix = 1
         if m.floor(m.log10(energy)) < 3:
             enfix = 1000
