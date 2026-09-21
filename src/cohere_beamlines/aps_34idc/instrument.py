@@ -136,7 +136,7 @@ class Instrument_aps_34idc(Instrument):
             print(str(ex))
 
         try:
-            spec_dict['det_roi'] = [int(n) for n in ss.getheader_element('UIMR5').split()]
+            spec_dict['det_roi'] = [int(n) for n in ss.getheader_element('UIMR5').split()][:4]
         except Exception as ex:
             print(str(ex))
 

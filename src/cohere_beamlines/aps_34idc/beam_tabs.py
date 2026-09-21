@@ -197,6 +197,8 @@ class SubInstrTab():
         self.energy.setText('')
         self.delta.setText('')
         self.gamma.setText('')
+        self.instr_tab.detector.setText('')
+        self.instr_tab.det_roi.setText('')
         self.detdist.setText('')
         self.th.setText('')
         self.chi.setText('')
@@ -634,11 +636,15 @@ class InstrTab(QWidget):
         if len(conf_map) == 0:
             return
 
+        if self.add_config and self.main_win.state == 'cloning':
+            # reload parsed
+            self.extended.clear_conf()
+            self.extended.parse_spec()
+
         er_msg = ver.verify_types(instr_schema.get_config_schema(), conf_map)
         if len(er_msg) > 0:
             msg_window(er_msg)
             if not self.main_win.no_verify:
                 return
-
         ut.write_config(conf_map, ut.join(self.main_win.experiment_dir, 'conf', 'config_instr'))
 

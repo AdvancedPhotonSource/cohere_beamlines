@@ -71,7 +71,7 @@ INSTR_FIELDS = {
         },
         {
             'key': 'det_roi', 'label': 'detector ROI',
-            'placeholder': 'e.g., [0, 256, 0, 256]',
+            'placeholder': 'e.g., [0, 256, 0, 256]', 'element_type': 'int',
             'description': 'Detector ROI [y0, height, x0, width].',
         },
         {'key': 'scan_step', 'label': 'scan_step', 'unit': 'deg',

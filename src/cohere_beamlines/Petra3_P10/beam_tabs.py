@@ -547,6 +547,12 @@ class InstrTab(QWidget):
             return
 
         conf_map = self.get_instr_config()
+
+        if self.add_config and self.main_win.state == 'cloning':
+            # reload parsed
+            self.extended.clear_conf()
+            self.extended.parse_spec()
+
         er_msg = ver.verify_types(instr_schema.get_config_schema(), conf_map)
         if len(er_msg) > 0:
             msg_window(er_msg)
