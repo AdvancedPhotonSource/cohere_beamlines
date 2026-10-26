@@ -16,5 +16,5 @@ class Diffractometer(NamedTuple):
     sampleaxes_mne = ('samRy',)
     detectoraxes_name = ('DetZ', 'DetX', 'DetY')
     detectoraxes_mne = ('DetZ', 'DetX', 'DetY')
-    detectordist_name = 'DetZ'
-    detectordist_mne = 'DetZ'
+    detectordist_name = 'detdist'
+    detectordist_mne = 'detdist'
