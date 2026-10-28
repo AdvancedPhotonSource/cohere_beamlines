@@ -7,7 +7,7 @@ INSTR_FIELDS = {
             'description': 'Directory containing the raw detector frames and metadata.',
         },
         {
-            'key': 'sample', 'label': 'sample',
+            'key': 'sample', 'label': 'sample', 'type': 'str',
             'description': 'Sample identifier (used to locate the .fio metadata file).',
         },
         {
@@ -15,8 +15,7 @@ INSTR_FIELDS = {
             'description': 'Dark-field reference image (subtracted from frames).',
         },
         {
-            'key': 'detector_module', 'label': 'detector module',
-            'type': 'choice', 'choices': ['e4m', 'e2500'],
+            'key': 'detector_module', 'label': 'detector module', 'type': 'int',
             'description': 'Detector module identifier.',
         },
         {'key': 'scan_step', 'label': 'scan_step', 'unit': 'deg',
