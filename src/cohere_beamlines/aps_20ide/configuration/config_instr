@@ -1,8 +1,4 @@
 detector = "ASI"
-// if detector is BSE the following three parameters apply
-remove_band_background = True
-rbb_smooth_sigma = 50
-rbb_robust = True
 data_dir = "data_dir"
 whitefield_filename = "cohere_ui/beamlines/aps_20ide/detector_corrections/ASI/oldwf.tif"
 darkfield_filename = "dark/file"
@@ -11,3 +7,10 @@ energy = 52.0
 DetX = -24.8
 DetY = 692.50052
 DetZ = 6.22
+//samRy = 0
+detdist = 0
+
+// if detector is BSE the following three parameters apply
+remove_band_background = True
+rbb_smooth_sigma = 50
+rbb_robust = True
