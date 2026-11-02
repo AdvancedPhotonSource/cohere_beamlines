@@ -47,32 +47,35 @@ class Instrument(ABC):
 
     def check_params(self, params, slices):
         if 'detector' not in params:
-            print('detector name not parsed from metadata and not configured')
-            raise KeyError('detector name not parsed from metadata and not configured')
+            msg = 'detector name not parsed from metadata and not configured'
+            print(msg)
+            raise KeyError(msg)
         if self.diff_obj.detectordist_mne not in params:
-            print('detdist not parsed from metadata and not configured')
-            raise KeyError('detdist not parsed from metadata and not configured')
+            msg = f'{self.diff_obj.detectordist_mne} not parsed from metadata and not configured'
+            print(msg)
+            raise KeyError(msg)
         if 'scanmot' not in params:
-            print('scanmot not parsed from metadata and not configured')
-            raise KeyError('scanmot not parsed from metadata and not configured')
+            msg = f'scanmot not parsed from metadata and not configured'
+            print(msg)
+            raise KeyError(msg)
         if 'energy' not in params:
-            print('energy not parsed from metadata and not configured')
-            raise KeyError('energy not parsed from metadata and not configured')
+            msg = 'energy not parsed from metadata and not configured'
+            print(msg)
+            raise KeyError(msg)
         if slices is None:
-            if 'scanmot' not in params:
-                raise KeyError('scanmot not configured')
-        else:
             if 'scanmot_posns' not in params:
                 print('scanmot_posns not parsed from metadata, for geometry will use scanmot if configured')
         for ax in self.diff_obj.sampleaxes_mne:
             if ax != params['scanmot']:
                 if ax not in params:
-                    print(f'{ax} not parsed from metadata and not configured')
-                    raise KeyError(f'{ax} not parsed from metadata and not configured')
+                    msg = f'{ax} not parsed from metadata and not configured'
+                    print(msg)
+                    raise KeyError(msg)
         for ax in self.diff_obj.detectoraxes_mne:
             if ax not in params:
-                print(f'{ax} not parsed from metadata and not configured')
-                raise KeyError(f'{ax} not parsed from metadata and not configured')
+                msg = f'{ax} not parsed from metadata and not configured'
+                print(msg)
+                raise KeyError(msg)
 
 
     def get_q2(self, scan, slices, roi, geo=False):

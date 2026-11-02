@@ -90,7 +90,7 @@ class Instrument_aps_28idb(Instrument):
 
         try:
             motname = "INIT_MOPO_{m}".format(m=self.diff_obj.detectordist_name)
-            spec_dict['detdist'] = ss.init_motor_pos[motname]
+            spec_dict[self.diff_obj.detectordist_mne] = ss.init_motor_pos[motname]
         except:
             pass
 

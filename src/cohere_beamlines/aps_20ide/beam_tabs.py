@@ -120,10 +120,13 @@ class SubInstrTab():
         meta_layout.addRow("DetY (mm)", self.DetY)
         self.DetZ = QLineEdit()
         self.DetZ.setModified(False)
-        meta_layout.addRow("DetZ (mm), detector distance", self.DetZ)
+        meta_layout.addRow("DetZ (mm)", self.DetZ)
         self.samRy= QLineEdit()
         self.samRy.setModified(False)
         meta_layout.addRow("samRy", self.samRy)
+        self.detdist = QLineEdit()
+        self.detdist.setModified(False)
+        meta_layout.addRow("detdist (mm)", self.detdist)
         self.scanmot = QLineEdit()
         self.scanmot.setModified(False)
         meta_layout.addRow("scan motor", self.scanmot)
@@ -136,6 +139,7 @@ class SubInstrTab():
         self.DetX.textChanged.connect(lambda: set_overriden(self.DetX))
         self.DetY.textChanged.connect(lambda: set_overriden(self.DetY))
         self.samRy.textChanged.connect(lambda: set_overriden(self.samRy))
+        self.detdist.textChanged.connect(lambda: set_overriden(self.detdist))
         self.scanmot.textChanged.connect(lambda: set_overriden(self.scanmot))
         self.scan_step.textChanged.connect(lambda: set_overriden(self.scan_step))
 
@@ -171,6 +175,8 @@ class SubInstrTab():
             override_item(self.samRy, str(conf_map['samRy']).replace(" ", ""))
         if 'scanmot' in conf_map:
             override_item(self.scanmot, str(conf_map['scanmot']).replace(" ", ""))
+        if 'detdist' in conf_map:
+            override_item(self.detdist, str(conf_map['detdist']).replace(" ", ""))
         if 'scan_step' in conf_map:
             override_item(self.scan_step, str(conf_map['scan_step']).replace(" ", ""))
 
@@ -181,6 +187,7 @@ class SubInstrTab():
         self.DetY.setText('')
         self.DetZ.setText('')
         self.samRy.setText('')
+        self.detdist.setText('')
         self.scanmot.setText('')
         self.scan_step.setText('')
 
@@ -207,6 +214,8 @@ class SubInstrTab():
             conf_map['DetZ'] = ast.literal_eval(str(self.DetZ.text()))
         if self.samRy.isModified() and len(self.samRy.text()) > 0:
             conf_map['samRy'] = ast.literal_eval(str(self.samRy.text()))
+        if self.detdist.isModified() and len(self.detdist.text()) > 0:
+            conf_map['detdist'] = ast.literal_eval(str(self.detdist.text()))
         if self.scanmot.isModified() and len(self.scanmot.text()) > 0:
             conf_map['scanmot'] = str(self.scanmot.text())
         if self.scan_step.isModified() and len(self.scan_step.text()) > 0:
@@ -259,6 +268,8 @@ class SubInstrTab():
             set_item_parsed(self.DetZ, str(meta_dict['DetZ']))
         if 'samRy' in meta_dict:
             set_item_parsed(self.samRy, str(meta_dict['samRy']))
+        if 'detdist' in meta_dict:
+            set_item_parsed(self.detdist, str(meta_dict['detdist']))
         if 'scanmot' in meta_dict:
             set_item_parsed(self.scanmot, str(meta_dict['scanmot']))
         if 'scan_step' in meta_dict:

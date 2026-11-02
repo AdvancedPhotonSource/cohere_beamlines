@@ -95,11 +95,8 @@ class Instrument_aps_20ide(Instrument):
                 h5_dict[mot_mne] = h5f[f'DMS/{mot_mne}'][0]
             except:
                 pass
-        # detectordist_mne is the same as detectoraxes_mne[0]
-        # try:
-        #     h5_dict[self.detectordist_mne] = h5f[f'DMS/{self.detectordist_name}'][0]
-        # except:
-        #     pass
+        # defaults to 0 but can be overridden by configuration
+        h5_dict[self.diff_obj.detectordist_mne] = 0
         try:
             h5_dict['energy'] = h5f['HEM/Energy'][0]
         except Exception as ex:
