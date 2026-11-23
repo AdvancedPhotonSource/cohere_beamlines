@@ -20,4 +20,5 @@ class Diffractometer(NamedTuple):
     detectoraxes_mne = ('delta', 'gamma')
     detectordist_name = 'camdist'
     detectordist_mne = 'detdist'
+    energymot_name = 'en'
 

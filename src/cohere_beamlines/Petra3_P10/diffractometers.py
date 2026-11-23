@@ -19,3 +19,4 @@ class Diffractometer(NamedTuple):
     detectoraxes_mne = ('gam','del')
     detectordist_name = '_distance'
     detectordist_mne = 'detdist'
+    energymot_name = 'fmbenergy'

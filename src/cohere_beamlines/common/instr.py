@@ -78,6 +78,19 @@ class Instrument(ABC):
                 raise KeyError(msg)
 
 
+    def convert_energy(self, params):
+        energy = params['energy']
+        if energy <= 0:
+            raise ValueError('energy must be positive')
+        enfix = 1
+        if m.floor(m.log10(energy)) < 3:
+            enfix = 1000
+        energy = energy * enfix  # x-ray energy in eV
+        params['energy'] = energy
+        params['enfix'] = enfix
+        return params
+
+
     def get_q2(self, scan, slices, roi, geo=False):
         """
         Returns q2 associated with the area on detector pointed by roi for requested slices.
@@ -90,27 +103,29 @@ class Instrument(ABC):
         :param det: detector object
         :return: array, q2
         """
+        det = self.det_obj
+        diff = self.diff_obj
+
         params = self.parse_metadata(scan)
         # override with config params if any
         params.update(self.conf_params['config_instr'])
         # exception is raised if missing parameter
         self.check_params(params, slices)
+        # converting units for each beamline in beamline function
         params = self.convert_units(params)
+        # converting energy is the same for all beamlines
+        params = self.convert_energy(params)
         energy = params['energy']
-        if energy <= 0:
-            raise ValueError('energy must be positive')
-        enfix = 1
-        if m.floor(m.log10(energy)) < 3:
-            enfix = 1000
-        energy = energy * enfix  # x-ray energy in eV
-        params['energy'] = energy
 
         scanmot = params['scanmot'].strip()
-
-        if scanmot == 'en':
-            raise ValueError('energy scan currently not supported')
-        #     scanen = np.array((energy, energy + params['scanmot_del'] * enfix))
-        else:
+        try:
+            if scanmot == params[self.diff_obj.energymot_name]:
+                raise ValueError('energy scan currently not supported')
+            #     scanen = np.array((energy, energy + params['scanmot_del'] * enfix))
+            else:
+                scanen = np.array((energy,))
+        except:
+            # It will raise exception if beamline does not have defined energymot_name
             scanen = np.array((energy,))
 
         if slices is None:
@@ -130,9 +145,6 @@ class Instrument(ABC):
                     scanmot_arr = np.array([scanmot_posns[slices], scanmot_posns[slices] + params['scan_step']])
                 else:
                     scanmot_arr = np.array([scanmot_posns[slices], scanmot_posns[slices+1]])
-
-        det = self.det_obj
-        diff = self.diff_obj
 
         args = []
         for sa in diff.sampleaxes_mne:
