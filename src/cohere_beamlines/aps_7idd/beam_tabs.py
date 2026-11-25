@@ -579,6 +579,8 @@ class InstrTab(QWidget):
             conf_map['Imult'] = ast.literal_eval(str(self.Imult.text()).replace(os.linesep,''))
         if len(self.beam_zero.text()) > 0:
             conf_map['beam_zero'] = ast.literal_eval(str(self.beam_zero.text()).replace(os.linesep,''))
+        if len(self.detector.text()) > 0:
+            conf_map['detector'] = str(self.detector.text())
 
         if self.add_config:
             conf_map.update(self.extended.get_instr_config())
